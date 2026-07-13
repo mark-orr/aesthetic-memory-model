@@ -1,4 +1,7 @@
-# Hyperparameters for the cognitive model
-threshold: 1.5
-drift_rate: 0.3
-noise_sigma: 0.1
+# pyactup Memory parameters (see AestheticMemoryModel in src/model.py)
+noise: 0.25
+decay: 0.5
+temperature: null   # null -> defaults to sqrt(2) * noise
+threshold: null     # null -> no minimum activation required for retrieval
+mismatch: null       # null -> partial/similarity matching disabled (exact match only)
+optimized_learning: false
