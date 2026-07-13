@@ -6,6 +6,7 @@ the song already having a chunk of its own.
 """
 
 import csv
+import math
 import random
 
 import pandas as pd
@@ -81,6 +82,64 @@ def run_design1(num_songs=100, num_exposures=10000, window=20, seed=42,
             row = model.aesthetic_basis(song_id)
             row["trial"] = trial
             row["complexity"] = complexity
+            rows.append(row)
+        seen.add(song_id)
+        model.learn_song(song_id, complexity)
+
+    df = pd.DataFrame(rows)
+    df["aesthetic_basis_rolling_mean"] = df["aesthetic_basis"].rolling(window).mean()
+    df.to_csv(output_path, index=False)
+    return df
+
+
+def sweep_center(trial, num_exposures, num_cycles, sweep_type="rotate"):
+    """The moving center mu(t) (radians) of the Design 2 probability distribution.
+
+    "rotate": steady one-direction rotation, completing num_cycles full
+    revolutions over the run (a spotlight continuously circling the songs).
+    "oscillate": center swings back and forth between -pi and +pi instead of
+    completing full loops in one direction.
+    """
+    phase = 2 * math.pi * num_cycles * trial / num_exposures
+    if sweep_type == "rotate":
+        return phase
+    elif sweep_type == "oscillate":
+        return math.pi * math.sin(phase)
+    raise ValueError(f"unknown sweep_type: {sweep_type!r}")
+
+
+def von_mises_weights(angles, mu, kappa):
+    """Unnormalized von Mises density at each song's circle position, given
+    the distribution's current center mu and concentration kappa."""
+    return [math.exp(kappa * math.cos(a - mu)) for a in angles]
+
+
+def run_design2(num_songs=100, num_exposures=10000, window=20, seed=42,
+                 kappa=4.0, num_cycles=10, sweep_type="rotate",
+                 config_path="config.yaml",
+                 output_path="results/data/design2_cyclic_timeseries.csv"):
+    """Series of Experiments, Design 2 (literature-notes/main-project-idea.txt):
+    same as Design 1, but songs are equally spaced on a circle and drawn from
+    a von Mises distribution whose center sweeps cyclically around the circle,
+    instead of Design 1's uniform i.i.d. draws."""
+    config = load_config(config_path)
+    model = AestheticMemoryModel(**config)
+    rng = random.Random(seed)
+    song_ids, complexities = make_ergodic_environment(num_songs, seed=seed)
+    angles = [2 * math.pi * i / num_songs for i in range(num_songs)]
+
+    seen = set()
+    rows = []
+    for trial in range(num_exposures):
+        mu = sweep_center(trial, num_exposures, num_cycles, sweep_type)
+        weights = von_mises_weights(angles, mu, kappa)
+        song_id = rng.choices(song_ids, weights=weights, k=1)[0]
+        complexity = complexities[song_id]
+        if song_id in seen:
+            row = model.aesthetic_basis(song_id)
+            row["trial"] = trial
+            row["complexity"] = complexity
+            row["mu"] = mu
             rows.append(row)
         seen.add(song_id)
         model.learn_song(song_id, complexity)

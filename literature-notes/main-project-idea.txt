@@ -16,9 +16,11 @@ Algorithm B (similarity comparison):
 
 Series of Experiments:
 Design 1:  
-Let us consider that aesthetic_basis as we are now computing as something we want to measure over time (as a time-series).  We want to understand how the aesthetic_basis varies in an agent given its environment.  For example, given a random, ergodic environment over a long-time horizon (say 10000 song exposures over say 100 songs), what is the time-averaged (say a window of 20 exposures) aesthetic_basis?
+Let us consider that aesthetic_basis as we are now computing as something we want to measure over time (as a time-series).  We want to understand how the aesthetic_basis varies in an agent given its environment.  For example, given a random, ergodic environment over a long-time horizon (say 10000 song exposures over say 100 songs), what is the time-averaged (say a window of 20 exposures) aesthetic_basis?  
 
-Path 2: NOT COMPLETED YET.
+Design 2: This is the same as design 1 except we are going to provide a systematic cyclic environment based on a radial function.  Imagine something like this as the controller for the environment.  We have all 100 songs as a discrete ordered set (not sure how to order, but doesn't really matter).  Over this ordered set, there is a probabilyt distribution of the probability that a song will serve as the next stimulus in the environment.  The location of this probability distribution (e.g., the center of the distribution) will vary systematically over the ordered set by some cyclic radioal function that has all the songs equally spaced on a circle.  You know what I mean?  It would be useful to visulize dynamically as a jpeg this relation of the ordered set, the distribution center and the radial funciton).   Does this make sense?
+
+
 References
 For the Anderson reflections notion (declarative memory chunks `representing the statistics in the environment) see: ./Anderson and Schooler - 1991 - Reflections of the Environment in Memory.pdf
 
