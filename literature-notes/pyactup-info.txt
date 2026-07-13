@@ -1,0 +1,6 @@
+The pyactup user manual and online documentation is here:  https://cmu-psych-fms.github.io/fms/pyactup/
+
+The pyactup pip install description is here: https://pypi.org/project/pyactup/
+
+The pyactup github repo for source code is here:  https://github.com/cmu-psych-fms/pyactup/
+

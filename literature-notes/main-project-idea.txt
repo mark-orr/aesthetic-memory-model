@@ -1,0 +1,29 @@
+This project will explore the notion that declarative memory (in humans) can serve as a basis for aesthetic judgement. We invoke a theory of decision making called instance-based learning as a macro theory of how one uses past instances, encoded in memory, as generating key information for a future decision.  And, we invoke Anderson's theory of needs probability of memory which has the supposition that the accessability of a specific memory instance is directly related to prior systematic statistical patterns, typically temporal, in the environment. (Anderson may be assuming an ergodic environment).  And, we are wondering how the inverted-u theory of stimulus complexity, coming from the theory of experimental aesthetics, might serve us in thinking about how memory might serve as the basis of aesthetic preference.  Is there a way to integrate all of these ideas?  I wonder.  You will see the References listed below for all of these topics. 
+
+This project is, fundamentally, attempting to build a computational model of aesthetic judgement.  The computational basis is pyactup (see the file ./pyactup-info.text for details), a model of declarative memory encoding and retrieval.  In our initial theoretical sketch, each encoding of an instance (think instance-based learning) is implemented in pyactup (think ACT-R declarative memory).  Further, we will invoke the notion of a chunk in memory as the representation for each instance.  A chunk is a set of slot-value pairings where a slot is a variable and the value is the value of that variable for a given chunk.  Each IBL instance is encoded as a chunk.  And, by Anderson's memory theory, when an agent/person is confronted with a piece of music or a song, the agent can compute the difference between its activation in memory and the chunk in memory with the highest current activation.  This difference is the kernel of aesthetic judgment/evaluation. 
+
+
+Algorithm A (differences in activation of chunks):
+1. retrieve for prediction of next song the declarative memory chunk with the highest probability which, effectively is its current activation in memory.
+2. Compute memory activation of song in the environment (not via retrieval but via an activation process lookup in pyactup).
+3. compute the absolute value of the difference between 1 and 2.
+4. label the output of 3 as the "aesthetic basis"
+5. 
+
+Algorithm B (similarity comparison):
+1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
+
+References
+For the Anderson reflections notion (declarative memory chunks `representing the statistics in the environment) see: ./Anderson and Schooler - 1991 - Reflections of the Environment in Memory.pdf
+
+For instance based learning see: ./Gonzalez et al. - 2003 - Instance-based learning in dynamic decision making.pdf
+
+For pyactup information see: ./pyactu-info.txt
+
+For theory of experimental aesthetics, see:  
+./Güçlütürk and van Lier - 2019 - Decomposing Complexity Preferences for Music.pdf
+./Chmiel2017_BackToTheInvertedU.pdf
+./Orr and Ohlsson - 2001 - The Relationship Between Musical Complexity and Liking in Jazz and Bluegrass.pdf
+./Orr-RelationshipComplexityLiking-2005.pdf
+
+EOF
