@@ -13,6 +13,12 @@ Algorithm A (differences in activation of chunks):
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
 
+
+Series of Experiments:
+Design 1:  
+Let us consider that aesthetic_basis as we are now computing as something we want to measure over time (as a time-series).  We want to understand how the aesthetic_basis varies in an agent given its environment.  For example, given a random, ergodic environment over a long-time horizon (say 10000 song exposures over say 100 songs), what is the time-averaged (say a window of 20 exposures) aesthetic_basis?
+
+Path 2: NOT COMPLETED YET.
 References
 For the Anderson reflections notion (declarative memory chunks `representing the statistics in the environment) see: ./Anderson and Schooler - 1991 - Reflections of the Environment in Memory.pdf
 
