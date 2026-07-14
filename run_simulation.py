@@ -166,6 +166,59 @@ def run_design2(num_songs=100, num_exposures=10000, window=20, seed=42,
     return df
 
 
+def run_design3(num_songs=100, num_exposures=10000, window=20, seed=42,
+                 kappa=4.0, num_cycles=10, sweep_type="rotate",
+                 noise=None, decay=None,
+                 config_path="config.yaml",
+                 output_path="results/data/design3_evaluation_timeseries.csv"):
+    """Series of Experiments, Design 3 (literature-notes/main-project-idea.txt):
+    an expansion of Design 2 -- same cyclic von Mises environment -- but using
+    Algorithm A2 instead of Algorithm A, and chunks encoded as
+    {song_id, evaluation} instead of {song_id, complexity}. complexity is
+    still tracked at the environment level (for e.g. inverted-U analysis)
+    even though it's no longer stored in the memory chunk itself.
+
+    A song's evaluation is undefined on its first exposure (no chunk yet) and
+    second (no prior activation reading to diff against yet); 0.0 is encoded
+    as a bootstrap placeholder for those two exposures.
+
+    noise/decay override the corresponding pyactup Memory parameters from
+    config_path when not None, so they can be set directly from a notebook."""
+    config = load_config(config_path)
+    if noise is not None:
+        config["noise"] = noise
+    if decay is not None:
+        config["decay"] = decay
+    model = AestheticMemoryModel(**config)
+    rng = random.Random(seed)
+    song_ids, complexities = make_ergodic_environment(num_songs, seed=seed)
+    angles = [2 * math.pi * i / num_songs for i in range(num_songs)]
+
+    seen = set()
+    rows = []
+    for trial in range(num_exposures):
+        mu = sweep_center(trial, num_exposures, num_cycles, sweep_type)
+        weights = von_mises_weights(angles, mu, kappa)
+        song_id = rng.choices(song_ids, weights=weights, k=1)[0]
+        complexity = complexities[song_id]
+        if song_id in seen:
+            row = model.evaluate_a2(song_id)
+            row["trial"] = trial
+            row["complexity"] = complexity
+            row["mu"] = mu
+            rows.append(row)
+            evaluation_to_learn = row["evaluation"] if row["evaluation"] is not None else 0.0
+        else:
+            evaluation_to_learn = 0.0
+        seen.add(song_id)
+        model.learn_evaluation(song_id, evaluation_to_learn)
+
+    df = pd.DataFrame(rows)
+    df["evaluation_rolling_mean"] = df["evaluation"].rolling(window).mean()
+    df.to_csv(output_path, index=False)
+    return df
+
+
 if __name__ == "__main__":
     df = run_design1()
     print(df.tail())

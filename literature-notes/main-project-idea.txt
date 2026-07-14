@@ -8,7 +8,15 @@ Algorithm A (differences in activation of chunks):
 2. Compute memory activation of song in the environment (not via retrieval but via an activation process lookup in pyactup).
 3. compute the absolute value of the difference between 1 and 2.
 4. label the output of 3 as the "aesthetic basis"
-5. 
+
+Algorithm A2 (extension of Algorithm A):
+1. Compute steps 1-3 from evaluation A.
+2. assign the output of step 1 to be x.
+3. compute 1/e^x to be f(x).
+4. compute the difference between the last two memory activations of the song in the environment (without a learning call, just check last two activations).  This will likely involve time which pyactup may give you in some form.  I.e., this computes the last two activations of the same song.  Assign this difference value to be y.
+4. compute the mirrored sigmoid of y to be g(y)
+5. multiply g(y) * f(x) and call it "evaluation"
+6. encode (learn) a new chunk for the song with the lable of the song as one slot and the evaluation as another. 
 
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
@@ -20,6 +28,15 @@ Let us consider that aesthetic_basis as we are now computing as something we wan
 
 Design 2: This is the same as design 1 except we are going to provide a systematic cyclic environment based on a radial function.  Imagine something like this as the controller for the environment.  We have all 100 songs as a discrete ordered set (not sure how to order, but doesn't really matter).  Over this ordered set, there is a probabilyt distribution of the probability that a song will serve as the next stimulus in the environment.  The location of this probability distribution (e.g., the center of the distribution) will vary systematically over the ordered set by some cyclic radioal function that has all the songs equally spaced on a circle.  You know what I mean?  It would be useful to visulize dynamically as a jpeg this relation of the ordered set, the distribution center and the radial funciton).   Does this make sense?
 
+Design 3: THis is an expansion of Design 2 with significant changes.  Change 1: each chunk will have two slots, the name or identifier of the song and the evaluation of the song.  Change 2: Algorithm A2 (extension of Algorithm A) is described above and will serve as the basis for simulation for Design 3. Otherwise, I think we keep other components and features the same as Design 2.  
+
+A few notes:
+--turn noise to zero when running on some runs.
+
+
+Design 4: INCOMPLETE THOUGTH< DO NOT IMPLEMENT.  Evo Game Theory approach where multiple songs compete and the strategy rules reference schedules of play for a song or set of songs. 
+
+Design X: INCOMPLETE FOR FUTURE, DO NOT IMPLEMENT, CONSIDER THESE AS COMPONENTS OF FUTURE DESIGNS.  For example, can we have an agent decide to not encode a song in the environment (to ignore it) if it is either too far from predicted activation or is too low on the delta function (to mean is too familiar, see 1/1+e^delta_of_activation).
 
 References
 For the Anderson reflections notion (declarative memory chunks `representing the statistics in the environment) see: ./Anderson and Schooler - 1991 - Reflections of the Environment in Memory.pdf
