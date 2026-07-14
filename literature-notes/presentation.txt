@@ -1,0 +1,2 @@
+Draft 1:  I am presenting a pdf based slide deck at a scientific conference.  I'd like some simple slides that capture design 1, design 2 and design 3.  For each, show the method with some math equations and a diagram or two of the flow or an algoritm specification.  And, give some semantics to ground the viewer.  A good resource would be to use the notebooks as a basis for developing the slides.  This audience will need some hand holding. 
+
