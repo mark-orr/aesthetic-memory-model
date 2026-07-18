@@ -40,6 +40,7 @@ class AestheticMemoryModel:
             optimized_learning=optimized_learning,
         )
         self._last_actual_activation = {}
+        self._pinned_activations = {}
 
     def learn_song(self, song_id, complexity, advance=True):
         chunk = self.memory.learn({"song_id": song_id, "complexity": complexity})
@@ -66,6 +67,53 @@ class AestheticMemoryModel:
             if chunk_items <= set(entry["attributes"]):
                 return chunk, entry["activation"]
         raise RuntimeError("No matching activation_history entry for retrieved chunk")
+
+    def _base_level_activation(self, chunk):
+        """Replicates pyactup's own base-level activation formula (the
+        non-optimized-learning case) so a correction can be computed fresh at
+        any point in time, rather than as a one-off snapshot. See pyactup.py's
+        Memory._activations, the `self._optimized_learning is None` branch."""
+        if self.memory.optimized_learning:
+            raise NotImplementedError(
+                "pin_activation doesn't support optimized_learning; the base-level "
+                "formula differs and isn't replicated here.")
+        now = self.memory.time
+        decay = self.memory.decay
+        refs = chunk.references[:chunk.reference_count]
+        return math.log(sum((now - t) ** -decay for t in refs))
+
+    def pin_activation(self, slots, target):
+        """Forces every chunk matching `slots` (subset match, like
+        memory.retrieve()) to report activation == target on every future
+        retrieve()/blend(), by installing an extra_activation correction that
+        is recomputed from the chunk's live base-level activation each time
+        it's queried -- so the pin holds even as more time passes or the
+        chunk gets reinforced again, not just as a one-time snapshot.
+
+        Exact only when memory.noise == 0 (deterministic); with noise on, each
+        query adds a fresh random draw this can't cancel out. Doesn't account
+        for partial-matching/similarity mismatch penalties."""
+        if self.memory.noise:
+            raise ValueError(
+                f"pin_activation requires memory.noise == 0 for exact results "
+                f"(currently {self.memory.noise}).")
+        if self.memory.mismatch is not None:
+            raise NotImplementedError(
+                "pin_activation doesn't account for partial-matching mismatch "
+                "penalties; only supported with mismatch=None.")
+        self._pinned_activations[frozenset(slots.items())] = target
+        self.memory.extra_activation = [self._pin_callback]
+
+    def unpin_activation(self, slots):
+        """Removes a previously installed pin for the chunk(s) matching `slots`."""
+        self._pinned_activations.pop(frozenset(slots.items()), None)
+
+    def _pin_callback(self, chunk):
+        chunk_items = set(chunk.items())
+        for pin_slots, target in self._pinned_activations.items():
+            if pin_slots <= chunk_items:
+                return target - self._base_level_activation(chunk)
+        return 0.0
 
     def predicted_chunk(self):
         """Step 1: highest-activation chunk in memory, unconstrained."""
