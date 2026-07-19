@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 5 — Live Evaluation Demo</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #f5f4f8;
+    --ink: #1f1a2e;
+    --muted: #6b6674;
+    --primary: #2e1f47;
+    --secondary: #e8a33d;
+    --grid: #d8d5e0;
+    --axis: #9b96a8;
+    --accent2: #3c8c5a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16121f;
+      --panel: #221c33;
+      --ink: #f0edf5;
+      --muted: #a49dae;
+      --primary: #c9b6ef;
+      --secondary: #f0b95a;
+      --grid: #362d4a;
+      --axis: #5c5468;
+      --accent2: #6bc78e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1.25rem 3rem;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  p.lede { color: var(--muted); margin-top: 0; max-width: 68ch; line-height: 1.5; }
+  a { color: var(--secondary); }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+  }
+  button.play-btn {
+    background: var(--primary);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) { button.play-btn { color: #16121f; } }
+  button.play-btn:active { opacity: 0.85; }
+  select {
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--grid);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9rem;
+  }
+  .controls input[type=range] {
+    flex: 1;
+    min-width: 160px;
+    accent-color: var(--secondary);
+  }
+  .frame-label {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 1rem 1.1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .card h2 { font-size: 1.0rem; margin: 0 0 0.6rem; }
+  svg { width: 100%; height: auto; display: block; }
+  .curve { fill: none; stroke: var(--primary); stroke-width: 2.5; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .axis { stroke: var(--axis); stroke-width: 1.3; }
+  .marker { fill: var(--secondary); }
+  .marker-line { stroke: var(--secondary); stroke-width: 1; stroke-dasharray: 4 3; }
+  .axis-label { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  .axis-title { fill: var(--muted); font-size: 12px; font-family: inherit; font-weight: 600; }
+  .point { fill: var(--accent2); stroke: var(--bg); stroke-width: 1.5; }
+  .context-line { fill: none; stroke: var(--primary); stroke-width: 1.5; opacity: 0.55; }
+  .playhead { stroke: var(--accent2); stroke-width: 1.5; }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.4rem;
+    margin-top: 0.8rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Design 5 — Live Evaluation Demo</h1>
+  <p class="lede">
+    A playback of a real <code>run_design5()</code> simulation (Algorithm A4, gamma=1.0,
+    100 songs, random ergodic environment). Watch the left-anchored evaluation parabola
+    reshape itself trial by trial as <b>r</b> (the running time-averaged aesthetic basis)
+    drifts, with the current trial's point plotted right on the curve.
+  </p>
+
+  <div class="controls">
+    <button class="play-btn" id="play-btn">▶ Play</button>
+    <select id="speed-select">
+      <option value="600">0.5×</option>
+      <option value="300" selected>1×</option>
+      <option value="150">2×</option>
+      <option value="60">4×</option>
+    </select>
+    <input type="range" id="frame-slider" min="0" max="211" step="1" value="0">
+    <span class="frame-label" id="frame-label">trial 8 (1 / 212)</span>
+  </div>
+
+  <div class="card">
+    <h2>evaluation(x, r) = 1 &minus; (2x/r &minus; 1)&sup2;, r drawn live from the simulation</h2>
+    <svg id="plot-main" viewBox="0 0 640 400" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="stats" id="stats-main"></div>
+  </div>
+
+  <div class="card">
+    <h2>evaluation over the whole run (playhead shows current position)</h2>
+    <svg id="plot-context" viewBox="0 0 640 180" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <footer>
+    Data is a fixed, pre-computed playback (not a live re-run). Part of the
+    <a href="https://github.com/mark-orr/aesthetic-memory-model" target="_blank" rel="noopener">aesthetic-memory-model</a> project
+    &middot; see also the <a href="index.html">evaluation function explorer</a>.
+  </footer>
+</div>
+
+<script>
+const FRAMES = [{"trial": 8, "song": "song_094", "x": 0.5512, "r": 0.5512, "evaluation": 0.0}, {"trial": 38, "song": "song_089", "x": 1.4491, "r": 1.3591, "evaluation": -0.2826}, {"trial": 59, "song": "song_048", "x": 2.4603, "r": 1.3776, "evaluation": -5.6149}, {"trial": 80, "song": "song_058", "x": 2.5715, "r": 1.4833, "evaluation": -5.0871}, {"trial": 97, "song": "song_093", "x": 1.5787, "r": 1.6128, "evaluation": 0.0828}, {"trial": 109, "song": "song_098", "x": 1.9333, "r": 1.6721, "evaluation": -0.7227}, {"trial": 123, "song": "song_083", "x": 2.8172, "r": 1.7009, "evaluation": -4.3478}, {"trial": 136, "song": "song_095", "x": 1.3306, "r": 1.7586, "evaluation": 0.7365}, {"trial": 149, "song": "song_014", "x": 2.9756, "r": 1.7618, "evaluation": -4.6551}, {"trial": 160, "song": "song_059", "x": 1.9817, "r": 1.7707, "evaluation": -0.5334}, {"trial": 173, "song": "song_082", "x": 1.8073, "r": 1.7765, "evaluation": -0.0706}, {"trial": 183, "song": "song_033", "x": 1.4245, "r": 1.7722, "evaluation": 0.6309}, {"trial": 194, "song": "song_025", "x": 3.6633, "r": 1.797, "evaluation": -8.4686}, {"trial": 203, "song": "song_076", "x": 1.837, "r": 1.8115, "evaluation": -0.0572}, {"trial": 216, "song": "song_093", "x": 3.7787, "r": 1.8428, "evaluation": -8.6168}, {"trial": 227, "song": "song_021", "x": 2.7928, "r": 1.8551, "evaluation": -3.0434}, {"trial": 236, "song": "song_088", "x": 3.0133, "r": 1.8521, "evaluation": -4.0802}, {"trial": 247, "song": "song_015", "x": 2.6695, "r": 1.8888, "evaluation": -2.3366}, {"trial": 256, "song": "song_075", "x": 1.0643, "r": 1.8874, "evaluation": 0.9837}, {"trial": 265, "song": "song_004", "x": 2.4562, "r": 1.9074, "evaluation": -1.482}, {"trial": 275, "song": "song_016", "x": 1.9553, "r": 1.9058, "evaluation": -0.1068}, {"trial": 285, "song": "song_012", "x": 0.2745, "r": 1.9057, "evaluation": 0.4932}, {"trial": 294, "song": "song_086", "x": 3.4312, "r": 1.9212, "evaluation": -5.6151}, {"trial": 303, "song": "song_031", "x": 1.2742, "r": 1.9159, "evaluation": 0.891}, {"trial": 313, "song": "song_031", "x": 1.0803, "r": 1.9038, "evaluation": 0.9818}, {"trial": 322, "song": "song_011", "x": 3.1092, "r": 1.9166, "evaluation": -4.0376}, {"trial": 332, "song": "song_021", "x": 1.0841, "r": 1.9119, "evaluation": 0.982}, {"trial": 342, "song": "song_071", "x": 2.2163, "r": 1.9298, "evaluation": -0.682}, {"trial": 351, "song": "song_074", "x": 3.3657, "r": 1.9251, "evaluation": -5.2333}, {"trial": 360, "song": "song_061", "x": 2.3051, "r": 1.9352, "evaluation": -0.9108}, {"trial": 369, "song": "song_076", "x": 2.1519, "r": 1.9478, "evaluation": -0.4631}, {"trial": 378, "song": "song_076", "x": 0.9554, "r": 1.9505, "evaluation": 0.9996}, {"trial": 387, "song": "song_040", "x": 0.8746, "r": 1.9508, "evaluation": 0.9893}, {"trial": 396, "song": "song_016", "x": 1.4272, "r": 1.9555, "evaluation": 0.7887}, {"trial": 405, "song": "song_058", "x": 2.4161, "r": 1.9654, "evaluation": -1.1276}, {"trial": 414, "song": "song_016", "x": 1.8623, "r": 1.9687, "evaluation": 0.2047}, {"trial": 423, "song": "song_090", "x": 3.1422, "r": 1.9812, "evaluation": -3.7178}, {"trial": 433, "song": "song_013", "x": 2.6482, "r": 1.9716, "evaluation": -1.8437}, {"trial": 442, "song": "song_036", "x": 2.3868, "r": 1.9779, "evaluation": -0.9979}, {"trial": 451, "song": "song_064", "x": 2.3132, "r": 1.9739, "evaluation": -0.8057}, {"trial": 460, "song": "song_000", "x": 2.5002, "r": 1.9826, "evaluation": -1.3169}, {"trial": 469, "song": "song_070", "x": 1.4742, "r": 1.9811, "evaluation": 0.7616}, {"trial": 478, "song": "song_069", "x": 1.4363, "r": 1.9871, "evaluation": 0.8014}, {"trial": 487, "song": "song_039", "x": 2.9069, "r": 1.9938, "evaluation": -2.6711}, {"trial": 496, "song": "song_045", "x": 0.9976, "r": 1.9954, "evaluation": 1.0}, {"trial": 505, "song": "song_022", "x": 3.8907, "r": 2.0049, "evaluation": -7.3008}, {"trial": 514, "song": "song_031", "x": 1.3927, "r": 1.9961, "evaluation": 0.8437}, {"trial": 523, "song": "song_025", "x": 1.5126, "r": 2.0022, "evaluation": 0.7389}, {"trial": 532, "song": "song_051", "x": 1.8458, "r": 2.0061, "evaluation": 0.294}, {"trial": 541, "song": "song_051", "x": 1.5223, "r": 2.005, "evaluation": 0.7312}, {"trial": 550, "song": "song_033", "x": 0.691, "r": 2.0057, "evaluation": 0.9033}, {"trial": 559, "song": "song_077", "x": 3.065, "r": 2.0046, "evaluation": -3.2349}, {"trial": 568, "song": "song_055", "x": 0.4428, "r": 2.0003, "evaluation": 0.6895}, {"trial": 577, "song": "song_025", "x": 2.5309, "r": 1.9989, "evaluation": -1.3478}, {"trial": 586, "song": "song_015", "x": 2.7286, "r": 1.9937, "evaluation": -2.0181}, {"trial": 595, "song": "song_089", "x": 2.1559, "r": 1.9952, "evaluation": -0.3481}, {"trial": 604, "song": "song_095", "x": 2.3262, "r": 2.0012, "evaluation": -0.7549}, {"trial": 613, "song": "song_036", "x": 2.287, "r": 1.9951, "evaluation": -0.6707}, {"trial": 622, "song": "song_056", "x": 0.1618, "r": 1.9944, "evaluation": 0.2982}, {"trial": 631, "song": "song_036", "x": 2.333, "r": 2.0054, "evaluation": -0.7602}, {"trial": 640, "song": "song_086", "x": 1.1701, "r": 2.0033, "evaluation": 0.9717}, {"trial": 649, "song": "song_078", "x": 1.7363, "r": 2.0019, "evaluation": 0.4602}, {"trial": 658, "song": "song_089", "x": 1.8042, "r": 2.0064, "evaluation": 0.3625}, {"trial": 667, "song": "song_096", "x": 0.9702, "r": 2.0112, "evaluation": 0.9988}, {"trial": 676, "song": "song_059", "x": 2.3481, "r": 2.0093, "evaluation": -0.7882}, {"trial": 685, "song": "song_067", "x": 2.7338, "r": 2.0106, "evaluation": -1.9566}, {"trial": 694, "song": "song_054", "x": 2.086, "r": 2.011, "evaluation": -0.1546}, {"trial": 703, "song": "song_031", "x": 1.6886, "r": 2.0084, "evaluation": 0.5355}, {"trial": 712, "song": "song_035", "x": 1.0499, "r": 2.0076, "evaluation": 0.9979}, {"trial": 721, "song": "song_069", "x": 2.833, "r": 2.006, "evaluation": -2.3288}, {"trial": 730, "song": "song_027", "x": 2.0305, "r": 2.0116, "evaluation": -0.038}, {"trial": 739, "song": "song_026", "x": 2.8955, "r": 2.0141, "evaluation": -2.5166}, {"trial": 748, "song": "song_048", "x": 2.5996, "r": 2.0168, "evaluation": -1.49}, {"trial": 757, "song": "song_095", "x": 1.7784, "r": 2.0159, "evaluation": 0.4157}, {"trial": 766, "song": "song_062", "x": 0.8542, "r": 2.0142, "evaluation": 0.977}, {"trial": 775, "song": "song_059", "x": 1.6274, "r": 2.0174, "evaluation": 0.6237}, {"trial": 784, "song": "song_003", "x": 1.4857, "r": 2.0199, "evaluation": 0.7781}, {"trial": 793, "song": "song_048", "x": 2.2319, "r": 2.0209, "evaluation": -0.4612}, {"trial": 802, "song": "song_096", "x": 1.7184, "r": 2.0185, "evaluation": 0.5063}, {"trial": 811, "song": "song_044", "x": 3.2633, "r": 2.0203, "evaluation": -3.9752}, {"trial": 820, "song": "song_031", "x": 2.79, "r": 2.0212, "evaluation": -2.1001}, {"trial": 829, "song": "song_014", "x": 1.7261, "r": 2.0189, "evaluation": 0.496}, {"trial": 838, "song": "song_077", "x": 2.4912, "r": 2.0194, "evaluation": -1.1529}, {"trial": 847, "song": "song_074", "x": 3.1644, "r": 2.0186, "evaluation": -3.5593}, {"trial": 856, "song": "song_009", "x": 1.4628, "r": 2.015, "evaluation": 0.7957}, {"trial": 865, "song": "song_087", "x": 2.8045, "r": 2.015, "evaluation": -2.1813}, {"trial": 874, "song": "song_047", "x": 1.721, "r": 2.0172, "evaluation": 0.5011}, {"trial": 883, "song": "song_055", "x": 2.6534, "r": 2.0195, "evaluation": -1.6495}, {"trial": 892, "song": "song_066", "x": 2.3653, "r": 2.0207, "evaluation": -0.7984}, {"trial": 901, "song": "song_093", "x": 1.7837, "r": 2.0191, "evaluation": 0.412}, {"trial": 910, "song": "song_096", "x": 1.8139, "r": 2.0175, "evaluation": 0.363}, {"trial": 919, "song": "song_041", "x": 0.9636, "r": 2.0155, "evaluation": 0.9981}, {"trial": 928, "song": "song_089", "x": 2.0361, "r": 2.018, "evaluation": -0.0362}, {"trial": 937, "song": "song_052", "x": 1.9505, "r": 2.0168, "evaluation": 0.1271}, {"trial": 946, "song": "song_062", "x": 1.119, "r": 2.016, "evaluation": 0.9879}, {"trial": 955, "song": "song_039", "x": 1.6877, "r": 2.0202, "evaluation": 0.55}, {"trial": 964, "song": "song_095", "x": 2.0248, "r": 2.0212, "evaluation": -0.0071}, {"trial": 973, "song": "song_029", "x": 2.8571, "r": 2.0221, "evaluation": -2.334}, {"trial": 982, "song": "song_088", "x": 1.9871, "r": 2.0204, "evaluation": 0.0649}, {"trial": 991, "song": "song_097", "x": 1.3655, "r": 2.0182, "evaluation": 0.8753}, {"trial": 1000, "song": "song_022", "x": 1.7826, "r": 2.0182, "evaluation": 0.4125}, {"trial": 1009, "song": "song_070", "x": 1.8644, "r": 2.0219, "evaluation": 0.2873}, {"trial": 1018, "song": "song_073", "x": 2.705, "r": 2.0237, "evaluation": -1.7997}, {"trial": 1027, "song": "song_061", "x": 0.8646, "r": 2.0203, "evaluation": 0.9792}, {"trial": 1036, "song": "song_006", "x": 1.4082, "r": 2.0203, "evaluation": 0.8448}, {"trial": 1045, "song": "song_097", "x": 1.5939, "r": 2.0194, "evaluation": 0.6652}, {"trial": 1054, "song": "song_057", "x": 2.2413, "r": 2.0205, "evaluation": -0.4849}, {"trial": 1063, "song": "song_078", "x": 2.6387, "r": 2.0214, "evaluation": -1.5945}, {"trial": 1072, "song": "song_010", "x": 1.8409, "r": 2.0235, "evaluation": 0.3284}, {"trial": 1081, "song": "song_057", "x": 1.4171, "r": 2.023, "evaluation": 0.8392}, {"trial": 1090, "song": "song_036", "x": 0.7096, "r": 2.0229, "evaluation": 0.9109}, {"trial": 1099, "song": "song_084", "x": 2.209, "r": 2.0226, "evaluation": -0.4024}, {"trial": 1108, "song": "song_018", "x": 3.5157, "r": 2.0272, "evaluation": -5.0934}, {"trial": 1117, "song": "song_056", "x": 2.5067, "r": 2.0259, "evaluation": -1.1746}, {"trial": 1126, "song": "song_069", "x": 0.9394, "r": 2.0249, "evaluation": 0.9948}, {"trial": 1135, "song": "song_077", "x": 2.0425, "r": 2.0279, "evaluation": -0.0291}, {"trial": 1144, "song": "song_097", "x": 1.7266, "r": 2.03, "evaluation": 0.5086}, {"trial": 1153, "song": "song_066", "x": 2.2817, "r": 2.0289, "evaluation": -0.5605}, {"trial": 1162, "song": "song_011", "x": 1.5537, "r": 2.0288, "evaluation": 0.7174}, {"trial": 1171, "song": "song_042", "x": 2.2367, "r": 2.0337, "evaluation": -0.4392}, {"trial": 1180, "song": "song_004", "x": 3.0433, "r": 2.0334, "evaluation": -2.9731}, {"trial": 1189, "song": "song_065", "x": 2.4617, "r": 2.035, "evaluation": -1.0145}, {"trial": 1198, "song": "song_046", "x": 3.3571, "r": 2.0354, "evaluation": -4.2839}, {"trial": 1207, "song": "song_034", "x": 2.5017, "r": 2.0341, "evaluation": -1.1309}, {"trial": 1216, "song": "song_080", "x": 2.7761, "r": 2.032, "evaluation": -2.001}, {"trial": 1225, "song": "song_052", "x": 0.7352, "r": 2.0304, "evaluation": 0.9239}, {"trial": 1234, "song": "song_091", "x": 2.6717, "r": 2.0299, "evaluation": -1.6647}, {"trial": 1243, "song": "song_058", "x": 2.5711, "r": 2.0306, "evaluation": -1.3482}, {"trial": 1252, "song": "song_008", "x": 3.0044, "r": 2.0317, "evaluation": -2.8316}, {"trial": 1261, "song": "song_092", "x": 2.6066, "r": 2.0326, "evaluation": -1.4486}, {"trial": 1270, "song": "song_061", "x": 0.728, "r": 2.0335, "evaluation": 0.9194}, {"trial": 1279, "song": "song_024", "x": 2.4202, "r": 2.0325, "evaluation": -0.9086}, {"trial": 1288, "song": "song_040", "x": 2.0248, "r": 2.034, "evaluation": 0.0181}, {"trial": 1297, "song": "song_063", "x": 2.1071, "r": 2.0317, "evaluation": -0.154}, {"trial": 1306, "song": "song_067", "x": 2.9261, "r": 2.0304, "evaluation": -2.543}, {"trial": 1315, "song": "song_060", "x": 1.5503, "r": 2.0306, "evaluation": 0.7223}, {"trial": 1324, "song": "song_086", "x": 2.8561, "r": 2.0324, "evaluation": -2.2782}, {"trial": 1333, "song": "song_004", "x": 2.3621, "r": 2.0332, "evaluation": -0.7519}, {"trial": 1342, "song": "song_011", "x": 1.9563, "r": 2.0327, "evaluation": 0.1447}, {"trial": 1351, "song": "song_088", "x": 2.0105, "r": 2.0321, "evaluation": 0.042}, {"trial": 1360, "song": "song_055", "x": 1.6099, "r": 2.035, "evaluation": 0.6611}, {"trial": 1369, "song": "song_022", "x": 2.0814, "r": 2.0379, "evaluation": -0.0873}, {"trial": 1378, "song": "song_018", "x": 1.5303, "r": 2.0377, "evaluation": 0.748}, {"trial": 1387, "song": "song_059", "x": 0.9398, "r": 2.0388, "evaluation": 0.9939}, {"trial": 1396, "song": "song_038", "x": 1.7386, "r": 2.0399, "evaluation": 0.5036}, {"trial": 1405, "song": "song_061", "x": 1.5725, "r": 2.0385, "evaluation": 0.7053}, {"trial": 1414, "song": "song_037", "x": 0.9204, "r": 2.0383, "evaluation": 0.9906}, {"trial": 1423, "song": "song_095", "x": 2.2568, "r": 2.042, "evaluation": -0.4651}, {"trial": 1432, "song": "song_045", "x": 0.8108, "r": 2.0406, "evaluation": 0.9578}, {"trial": 1441, "song": "song_098", "x": 2.4075, "r": 2.0417, "evaluation": -0.845}, {"trial": 1450, "song": "song_039", "x": 2.4304, "r": 2.0406, "evaluation": -0.9098}, {"trial": 1459, "song": "song_041", "x": 2.5341, "r": 2.0422, "evaluation": -1.1954}, {"trial": 1468, "song": "song_064", "x": 1.7908, "r": 2.0414, "evaluation": 0.4308}, {"trial": 1477, "song": "song_059", "x": 2.9936, "r": 2.0465, "evaluation": -2.7076}, {"trial": 1486, "song": "song_071", "x": 2.4445, "r": 2.0455, "evaluation": -0.9324}, {"trial": 1495, "song": "song_047", "x": 2.8155, "r": 2.0477, "evaluation": -2.062}, {"trial": 1504, "song": "song_013", "x": 1.4955, "r": 2.0455, "evaluation": 0.7864}, {"trial": 1513, "song": "song_028", "x": 1.7034, "r": 2.0455, "evaluation": 0.5571}, {"trial": 1522, "song": "song_014", "x": 3.0672, "r": 2.0468, "evaluation": -2.9884}, {"trial": 1531, "song": "song_068", "x": 1.5709, "r": 2.0448, "evaluation": 0.7122}, {"trial": 1540, "song": "song_053", "x": 2.5068, "r": 2.0427, "evaluation": -1.1154}, {"trial": 1549, "song": "song_078", "x": 1.5963, "r": 2.0427, "evaluation": 0.683}, {"trial": 1558, "song": "song_030", "x": 1.8613, "r": 2.0417, "evaluation": 0.3223}, {"trial": 1567, "song": "song_050", "x": 1.7511, "r": 2.0399, "evaluation": 0.4862}, {"trial": 1576, "song": "song_081", "x": 2.6295, "r": 2.0394, "evaluation": -1.4923}, {"trial": 1585, "song": "song_008", "x": 1.7873, "r": 2.0439, "evaluation": 0.4392}, {"trial": 1594, "song": "song_018", "x": 2.7061, "r": 2.045, "evaluation": -1.7111}, {"trial": 1603, "song": "song_014", "x": 2.3085, "r": 2.0423, "evaluation": -0.5892}, {"trial": 1612, "song": "song_002", "x": 1.9509, "r": 2.04, "evaluation": 0.1672}, {"trial": 1621, "song": "song_095", "x": 2.0546, "r": 2.0388, "evaluation": -0.0312}, {"trial": 1630, "song": "song_057", "x": 1.4541, "r": 2.038, "evaluation": 0.8177}, {"trial": 1639, "song": "song_058", "x": 1.9844, "r": 2.0393, "evaluation": 0.1048}, {"trial": 1648, "song": "song_062", "x": 2.7778, "r": 2.0403, "evaluation": -1.9687}, {"trial": 1657, "song": "song_016", "x": 2.5904, "r": 2.0431, "evaluation": -1.3584}, {"trial": 1666, "song": "song_076", "x": 2.7612, "r": 2.0446, "evaluation": -1.8935}, {"trial": 1675, "song": "song_014", "x": 2.4033, "r": 2.0463, "evaluation": -0.8198}, {"trial": 1684, "song": "song_029", "x": 2.017, "r": 2.0457, "evaluation": 0.0554}, {"trial": 1693, "song": "song_054", "x": 1.4726, "r": 2.0467, "evaluation": 0.8073}, {"trial": 1702, "song": "song_011", "x": 2.1145, "r": 2.0476, "evaluation": -0.1351}, {"trial": 1711, "song": "song_071", "x": 1.3522, "r": 2.0454, "evaluation": 0.8962}, {"trial": 1720, "song": "song_045", "x": 2.2307, "r": 2.0437, "evaluation": -0.3996}, {"trial": 1729, "song": "song_045", "x": 1.3437, "r": 2.0433, "evaluation": 0.9006}, {"trial": 1738, "song": "song_013", "x": 1.5488, "r": 2.0447, "evaluation": 0.7348}, {"trial": 1747, "song": "song_054", "x": 1.6354, "r": 2.0446, "evaluation": 0.6404}, {"trial": 1756, "song": "song_077", "x": 1.9113, "r": 2.0454, "evaluation": 0.245}, {"trial": 1765, "song": "song_039", "x": 2.0382, "r": 2.0444, "evaluation": 0.0121}, {"trial": 1774, "song": "song_008", "x": 2.0581, "r": 2.0432, "evaluation": -0.0293}, {"trial": 1783, "song": "song_048", "x": 2.6235, "r": 2.0434, "evaluation": -1.4578}, {"trial": 1792, "song": "song_099", "x": 2.3407, "r": 2.044, "evaluation": -0.665}, {"trial": 1801, "song": "song_006", "x": 1.164, "r": 2.0428, "evaluation": 0.9805}, {"trial": 1810, "song": "song_056", "x": 0.3534, "r": 2.0404, "evaluation": 0.5728}, {"trial": 1819, "song": "song_014", "x": 0.222, "r": 2.0373, "evaluation": 0.3884}, {"trial": 1828, "song": "song_005", "x": 2.6556, "r": 2.0364, "evaluation": -1.5861}, {"trial": 1837, "song": "song_098", "x": 2.0217, "r": 2.037, "evaluation": 0.0297}, {"trial": 1846, "song": "song_095", "x": 1.9173, "r": 2.0381, "evaluation": 0.2231}, {"trial": 1855, "song": "song_071", "x": 1.856, "r": 2.0413, "evaluation": 0.3302}, {"trial": 1864, "song": "song_058", "x": 1.7804, "r": 2.0411, "evaluation": 0.4456}, {"trial": 1873, "song": "song_053", "x": 1.8358, "r": 2.0404, "evaluation": 0.3608}, {"trial": 1882, "song": "song_088", "x": 2.3136, "r": 2.0397, "evaluation": -0.6094}, {"trial": 1891, "song": "song_067", "x": 3.4911, "r": 2.041, "evaluation": -4.8615}, {"trial": 1900, "song": "song_021", "x": 1.3956, "r": 2.0415, "evaluation": 0.8652}, {"trial": 1909, "song": "song_044", "x": 2.595, "r": 2.0401, "evaluation": -1.384}, {"trial": 1918, "song": "song_025", "x": 2.8099, "r": 2.04, "evaluation": -2.0793}, {"trial": 1927, "song": "song_098", "x": 2.3994, "r": 2.0386, "evaluation": -0.8334}, {"trial": 1936, "song": "song_087", "x": 2.2641, "r": 2.0383, "evaluation": -0.4923}, {"trial": 1945, "song": "song_056", "x": 2.4006, "r": 2.0378, "evaluation": -0.8389}, {"trial": 1954, "song": "song_045", "x": 1.7273, "r": 2.0373, "evaluation": 0.516}, {"trial": 1963, "song": "song_036", "x": 1.767, "r": 2.0373, "evaluation": 0.4603}, {"trial": 1972, "song": "song_074", "x": 1.826, "r": 2.0388, "evaluation": 0.3741}, {"trial": 1981, "song": "song_077", "x": 1.4261, "r": 2.0396, "evaluation": 0.8413}, {"trial": 1990, "song": "song_010", "x": 2.6584, "r": 2.0404, "evaluation": -1.5787}, {"trial": 1999, "song": "song_067", "x": 1.3412, "r": 2.0388, "evaluation": 0.9004}];
+
+(function () {
+  "use strict";
+
+  function leftAnchored(x, r) { return 1 - (2 * x / r - 1) ** 2; }
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  // ---- main parabola plot: fixed frame sized to the whole run's data ----
+  const W = 640, H = 400;
+  const PAD = { left: 48, right: 16, top: 16, bottom: 34 };
+  const rMax = Math.max(...FRAMES.map(f => f.r));
+  const X_MIN = -1, X_MAX = Math.ceil(rMax) + 1.5;
+  const evalVals = FRAMES.map(f => f.evaluation);
+  const Y_MIN = Math.floor(Math.min(...evalVals) - 0.5);
+  const Y_MAX = 1.3;
+
+  function scaleX(x) { return PAD.left + (x - X_MIN) / (X_MAX - X_MIN) * (W - PAD.left - PAD.right); }
+  function scaleY(y) { return H - PAD.bottom - (y - Y_MIN) / (Y_MAX - Y_MIN) * (H - PAD.top - PAD.bottom); }
+
+  function drawMainFrame(svg) {
+    const xTicks = 6, yTicks = 5;
+    for (let i = 0; i <= xTicks; i++) {
+      const x = X_MIN + (X_MAX - X_MIN) * (i / xTicks);
+      const sx = scaleX(x);
+      svg.appendChild(svgEl("line", { x1: sx, y1: PAD.top, x2: sx, y2: H - PAD.bottom, class: "gridline" }));
+      svg.appendChild(Object.assign(svgEl("text", { x: sx, y: H - PAD.bottom + 16, class: "axis-label", "text-anchor": "middle" }), { textContent: x.toFixed(1) }));
+    }
+    for (let i = 0; i <= yTicks; i++) {
+      const y = Y_MIN + (Y_MAX - Y_MIN) * (i / yTicks);
+      const sy = scaleY(y);
+      svg.appendChild(svgEl("line", { x1: PAD.left, y1: sy, x2: W - PAD.right, y2: sy, class: "gridline" }));
+      svg.appendChild(Object.assign(svgEl("text", { x: PAD.left - 8, y: sy + 4, class: "axis-label", "text-anchor": "end" }), { textContent: y.toFixed(1) }));
+    }
+    const sy0 = scaleY(0);
+    svg.appendChild(svgEl("line", { x1: PAD.left, y1: sy0, x2: W - PAD.right, y2: sy0, class: "axis" }));
+    const sx0 = scaleX(0);
+    svg.appendChild(svgEl("line", { x1: sx0, y1: PAD.top, x2: sx0, y2: H - PAD.bottom, class: "axis" }));
+
+    const midY = (PAD.top + (H - PAD.bottom)) / 2;
+    svg.appendChild(Object.assign(svgEl("text", { x: 14, y: midY, class: "axis-title", "text-anchor": "middle", transform: `rotate(-90, 14, ${midY})` }), { textContent: "evaluation" }));
+    svg.appendChild(Object.assign(svgEl("text", { x: (PAD.left + (W - PAD.right)) / 2, y: H - 4, class: "axis-title", "text-anchor": "middle" }), { textContent: "x (aesthetic_basis)" }));
+  }
+
+  function renderMain(frame) {
+    const svg = document.getElementById("plot-main");
+    svg.innerHTML = "";
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    drawMainFrame(svg);
+
+    const r = frame.r;
+    const pts = [];
+    const n = 200;
+    for (let i = 0; i <= n; i++) {
+      const x = X_MIN + (X_MAX - X_MIN) * (i / n);
+      pts.push([x, leftAnchored(x, r)]);
+    }
+    const d = pts.map(([x, y], i) => {
+      const sx = scaleX(x), sy = scaleY(Math.max(Y_MIN, Math.min(Y_MAX, y)));
+      return `${i === 0 ? "M" : "L"}${sx.toFixed(2)},${sy.toFixed(2)}`;
+    }).join(" ");
+    svg.appendChild(svgEl("path", { d, class: "curve" }));
+
+    // root/vertex markers for the current r
+    for (const m of [{ x: 0, y: 0 }, { x: r, y: 0 }, { x: r / 2, y: 1 }]) {
+      const sx = scaleX(m.x), sy = scaleY(Math.max(Y_MIN, Math.min(Y_MAX, m.y)));
+      svg.appendChild(svgEl("line", { x1: sx, y1: PAD.top, x2: sx, y2: H - PAD.bottom, class: "marker-line" }));
+      svg.appendChild(svgEl("circle", { cx: sx, cy: sy, r: 3.5, class: "marker" }));
+    }
+
+    // the live data point: (x, evaluation) -- lands exactly on the curve
+    const px = scaleX(frame.x), py = scaleY(Math.max(Y_MIN, Math.min(Y_MAX, frame.evaluation)));
+    svg.appendChild(svgEl("circle", { cx: px, cy: py, r: 7, class: "point" }));
+
+    document.getElementById("stats-main").innerHTML =
+      `trial: <b>${frame.trial}</b> &nbsp; song: <b>${frame.song}</b> &nbsp; ` +
+      `x: <b>${frame.x.toFixed(3)}</b> &nbsp; r: <b>${frame.r.toFixed(3)}</b> &nbsp; ` +
+      `evaluation: <b>${frame.evaluation.toFixed(3)}</b>`;
+  }
+
+  // ---- context plot: evaluation over the whole run, with a playhead ----
+  const CW = 640, CH = 180;
+  const CPAD = { left: 40, right: 12, top: 10, bottom: 22 };
+  const trials = FRAMES.map(f => f.trial);
+  const TMIN = Math.min(...trials), TMAX = Math.max(...trials);
+
+  function cScaleX(t) { return CPAD.left + (t - TMIN) / (TMAX - TMIN) * (CW - CPAD.left - CPAD.right); }
+  function cScaleY(y) { return CH - CPAD.bottom - (y - Y_MIN) / (Y_MAX - Y_MIN) * (CH - CPAD.top - CPAD.bottom); }
+
+  function renderContext(frameIdx) {
+    const svg = document.getElementById("plot-context");
+    svg.innerHTML = "";
+    svg.setAttribute("viewBox", `0 0 ${CW} ${CH}`);
+
+    const sy0 = cScaleY(0);
+    svg.appendChild(svgEl("line", { x1: CPAD.left, y1: sy0, x2: CW - CPAD.right, y2: sy0, class: "axis" }));
+
+    const d = FRAMES.map((f, i) => {
+      const sx = cScaleX(f.trial), sy = cScaleY(Math.max(Y_MIN, Math.min(Y_MAX, f.evaluation)));
+      return `${i === 0 ? "M" : "L"}${sx.toFixed(2)},${sy.toFixed(2)}`;
+    }).join(" ");
+    svg.appendChild(svgEl("path", { d, class: "context-line" }));
+
+    const px = cScaleX(FRAMES[frameIdx].trial);
+    svg.appendChild(svgEl("line", { x1: px, y1: CPAD.top, x2: px, y2: CH - CPAD.bottom, class: "playhead" }));
+    svg.appendChild(svgEl("circle", { cx: px, cy: cScaleY(Math.max(Y_MIN, Math.min(Y_MAX, FRAMES[frameIdx].evaluation))), r: 4, class: "point" }));
+  }
+
+  // ---- playback controls ----
+  const slider = document.getElementById("frame-slider");
+  const playBtn = document.getElementById("play-btn");
+  const speedSelect = document.getElementById("speed-select");
+  const frameLabel = document.getElementById("frame-label");
+  slider.max = FRAMES.length - 1;
+
+  let playing = false;
+  let timer = null;
+
+  function showFrame(i) {
+    const frame = FRAMES[i];
+    renderMain(frame);
+    renderContext(i);
+    frameLabel.textContent = `trial ${frame.trial} (${i + 1} / ${FRAMES.length})`;
+    slider.value = i;
+  }
+
+  function tick() {
+    let i = parseInt(slider.value, 10) + 1;
+    if (i >= FRAMES.length) i = 0;
+    showFrame(i);
+  }
+
+  function play() {
+    playing = true;
+    playBtn.textContent = "⏸ Pause";
+    timer = setInterval(tick, parseInt(speedSelect.value, 10));
+  }
+  function pause() {
+    playing = false;
+    playBtn.textContent = "▶ Play";
+    clearInterval(timer);
+  }
+
+  playBtn.addEventListener("click", () => (playing ? pause() : play()));
+  slider.addEventListener("input", () => { if (playing) pause(); showFrame(parseInt(slider.value, 10)); });
+  speedSelect.addEventListener("change", () => { if (playing) { pause(); play(); } });
+
+  showFrame(0);
+})();
+</script>
+</body>
+</html>
