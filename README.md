@@ -1,4 +1,4 @@
-# Cognitive Model Project
+# Cognitive Aesthetics Project
 see ./literature-notes/main-project-idea.txt for description of the project.
 
 ## Structure
