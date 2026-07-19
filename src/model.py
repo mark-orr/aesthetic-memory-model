@@ -30,10 +30,10 @@ until the window fills -- confirmed with Mark that a partial-window average
 is used rather than leaving it undefined). Each trial: run Algorithm A,
 update the running average with the resulting aesthetic_basis, then
 evaluation = inverted_parabola_left_anchored(x=aesthetic_basis_now,
-r=the just-updated running average). Note Algorithm A3 as specified in
-main-project-idea.txt has no chunk-learning step (unlike A2's step 6) --
-evaluate_a3 doesn't call learn_song/learn_evaluation; the caller decides
-whether/how to encode anything.
+r=the just-updated running average), then learns a new {song_id, evaluation}
+chunk as a final step (confirmed with Mark) -- same schema as A2's, but
+unlike evaluate_a2, evaluate_a3 does this learning itself rather than
+leaving it to the caller.
 """
 
 import math
@@ -231,12 +231,25 @@ class AestheticMemoryModel:
     def evaluate_a3(self, song_id):
         """Algorithm A3. Runs Algorithm A, updates the running
         time_averaged_aesthetic_basis with the resulting aesthetic_basis,
-        then evaluation = inverted_parabola_left_anchored(x=aesthetic_basis,
-        r=the updated running average). evaluation is None if the running
-        average is exactly 0 (the parabola's formula divides by r)."""
+        computes evaluation = inverted_parabola_left_anchored(x=aesthetic_basis,
+        r=the updated running average), then -- confirmed with Mark --
+        learns a new {song_id, evaluation} chunk as a final step, same
+        schema as Algorithm A2's. evaluation (and so the chunk-learning) is
+        skipped when the running average is exactly 0 (the parabola's
+        formula divides by r).
+
+        Unlike evaluate_a2, this method has a side effect: it mutates
+        memory itself rather than leaving learning to the caller. A driver
+        loop using Algorithm A3 should NOT separately call
+        learn_song/learn_evaluation after this (other than the one-time
+        bootstrap learn needed before a song's first evaluate_a3 call, same
+        precondition as aesthetic_basis/evaluate_a2 -- there must already be
+        an existing chunk for the song, or actual_activation is None)."""
         result = self.aesthetic_basis(song_id)
         x = result["aesthetic_basis"]
         r = self._update_time_averaged_basis(x)
         evaluation = inverted_parabola_left_anchored(x, r) if r else None
+        if evaluation is not None:
+            self.learn_evaluation(song_id, evaluation)
         result.update({"time_averaged_aesthetic_basis": r, "evaluation": evaluation})
         return result

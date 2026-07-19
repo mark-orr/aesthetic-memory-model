@@ -25,7 +25,7 @@ Algorithm steps:
 1. Compute steps 1-4 from evaluaton A.
 2. Update the "time-averaged aesthetic basis" using the current "aesthetic basis" as a new input to its calculation.
 3. Compute the "evaluation" as inverted_parabola_left_anchore(x, r), where x is the output of step 1 (i.e., x is the current"aesthetic basis") and r is the new "time-averaged aesthetic basis" 
-
+4. encode (learn) a new chunk for the song with the lable of the song as one slot and the evaluation as another. 
 
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
