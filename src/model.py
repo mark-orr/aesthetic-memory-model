@@ -41,6 +41,7 @@ class AestheticMemoryModel:
         )
         self._last_actual_activation = {}
         self._pinned_activations = {}
+        self._adjustments = {}
 
     def learn_song(self, song_id, complexity, advance=True):
         chunk = self.memory.learn({"song_id": song_id, "complexity": complexity})
@@ -102,17 +103,43 @@ class AestheticMemoryModel:
                 "pin_activation doesn't account for partial-matching mismatch "
                 "penalties; only supported with mismatch=None.")
         self._pinned_activations[frozenset(slots.items())] = target
-        self.memory.extra_activation = [self._pin_callback]
+        self._install_extra_activation()
 
     def unpin_activation(self, slots):
         """Removes a previously installed pin for the chunk(s) matching `slots`."""
         self._pinned_activations.pop(frozenset(slots.items()), None)
 
-    def _pin_callback(self, chunk):
+    def adjust_activation(self, slots, delta):
+        """Sets a persistent additive offset on every chunk matching `slots`
+        (subset match, like memory.retrieve()): its activation becomes
+        natural_activation + delta on every future retrieve()/blend(), still
+        tracking decay/reinforcement normally -- unlike pin_activation, which
+        forces an exact value regardless of the chunk's natural dynamics.
+
+        Calling this again on the same slots REPLACES the previous delta
+        (not cumulative). Unlike pin_activation, this works under any
+        noise/optimized_learning/mismatch setting, since it's a raw additive
+        offset rather than a computed correction to an exact target."""
+        self._adjustments[frozenset(slots.items())] = delta
+        self._install_extra_activation()
+
+    def clear_adjustment(self, slots):
+        """Removes a previously set adjustment for the chunk(s) matching `slots`."""
+        self._adjustments.pop(frozenset(slots.items()), None)
+
+    def _install_extra_activation(self):
+        self.memory.extra_activation = [self._extra_activation_callback]
+
+    def _extra_activation_callback(self, chunk):
+        """Pins take precedence over adjustments when both match the same
+        chunk, since a pin's whole point is an exact, unconditional value."""
         chunk_items = set(chunk.items())
         for pin_slots, target in self._pinned_activations.items():
             if pin_slots <= chunk_items:
                 return target - self._base_level_activation(chunk)
+        for adj_slots, delta in self._adjustments.items():
+            if adj_slots <= chunk_items:
+                return delta
         return 0.0
 
     def predicted_chunk(self):
