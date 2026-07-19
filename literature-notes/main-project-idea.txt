@@ -30,7 +30,6 @@ Algorithm steps:
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
 
-
 Series of Experiments:
 Design 1:  
 Let us consider that aesthetic_basis as we are now computing as something we want to measure over time (as a time-series).  We want to understand how the aesthetic_basis varies in an agent given its environment.  For example, given a random, ergodic environment over a long-time horizon (say 10000 song exposures over say 100 songs), what is the time-averaged (say a window of 20 exposures) aesthetic_basis?  
@@ -42,10 +41,11 @@ Design 3: THis is an expansion of Design 2 with significant changes.  Change 1: 
 A few notes:
 --turn noise to zero when running on some runs.
 
+Design 4: This is a baseline study that uses the same design of Design 1, but using Algorithm A3; also, each chunk will have two slots with the name or identifier of the song and the evaluation of the song (as in Design 3).  What we want to see is the following: (1) how does the "evaluation" vary over time, (2) to see how the "time-averaged aesthetic basis varies" varies over time.  
 
-Design 4: INCOMPLETE THOUGTH< DO NOT IMPLEMENT.  Evo Game Theory approach where multiple songs compete and the strategy rules reference schedules of play for a song or set of songs. 
+Design X: INCOMPLETE THOUGTH< DO NOT IMPLEMENT.  Evo Game Theory approach where multiple songs compete and the strategy rules reference schedules of play for a song or set of songs. 
 
-Design X: INCOMPLETE FOR FUTURE, DO NOT IMPLEMENT, CONSIDER THESE AS COMPONENTS OF FUTURE DESIGNS.  For example, can we have an agent decide to not encode a song in the environment (to ignore it) if it is either too far from predicted activation or is too low on the delta function (to mean is too familiar, see 1/1+e^delta_of_activation).
+Design X: INCOMPLETE FOR FUTURE, DO NOT IMPLEMENT, CONSIDER THESE AS COMPONENTS OF FUTURE DESIGNS.  For example, can we have an agent decide to not encode a song in the environment (to ignore it) if it is either too far from predicted activation or is too low on the delta function (to mean is too familiar, see 1/1+e^delta_of_activation). We can also have social multiplier effects.  We can have control agents (e.g,. an act-r cog twin or a ml model).
 
 References
 For the Anderson reflections notion (declarative memory chunks `representing the statistics in the environment) see: ./Anderson and Schooler - 1991 - Reflections of the Environment in Memory.pdf

@@ -219,6 +219,57 @@ def run_design3(num_songs=100, num_exposures=10000, window=20, seed=42,
     return df
 
 
+def run_design4(num_songs=100, num_exposures=10000, window=20, seed=42,
+                 time_average_mode="cumulative", time_average_window=20,
+                 noise=None, decay=None,
+                 config_path="config.yaml",
+                 output_path="results/data/design4_baseline_a3_timeseries.csv"):
+    """Series of Experiments, Design 4 (literature-notes/main-project-idea.txt):
+    a baseline study -- same random, ergodic environment as Design 1 (not
+    Design 2/3's cyclic one) -- but using Algorithm A3 instead of Algorithm A,
+    with chunks encoded as {song_id, evaluation} as in Design 3. Examines how
+    both `evaluation` and Algorithm A3's own running `time_averaged_aesthetic_basis`
+    vary over time.
+
+    evaluate_a3() learns its own chunk internally as a final step (unlike
+    evaluate_a2()), so -- unlike Designs 2/3's loop -- this does NOT also call
+    learn_evaluation() after it on repeat exposures; that would double-learn.
+    Only a song's first exposure gets an explicit bootstrap
+    learn_evaluation(song_id, 0.0) call, same placeholder convention as
+    Design 3.
+
+    noise/decay override the corresponding pyactup Memory parameters from
+    config_path when not None, so they can be set directly from a notebook."""
+    config = load_config(config_path)
+    if noise is not None:
+        config["noise"] = noise
+    if decay is not None:
+        config["decay"] = decay
+    model = AestheticMemoryModel(
+        **config, time_average_mode=time_average_mode, time_average_window=time_average_window)
+    rng = random.Random(seed)
+    song_ids, complexities = make_ergodic_environment(num_songs, seed=seed)
+
+    seen = set()
+    rows = []
+    for trial in range(num_exposures):
+        song_id = rng.choice(song_ids)
+        complexity = complexities[song_id]
+        if song_id in seen:
+            row = model.evaluate_a3(song_id)  # computes AND learns its own chunk
+            row["trial"] = trial
+            row["complexity"] = complexity
+            rows.append(row)
+        else:
+            model.learn_evaluation(song_id, 0.0)  # first-exposure bootstrap only
+        seen.add(song_id)
+
+    df = pd.DataFrame(rows)
+    df["evaluation_rolling_mean"] = df["evaluation"].rolling(window).mean()
+    df.to_csv(output_path, index=False)
+    return df
+
+
 if __name__ == "__main__":
     df = run_design1()
     print(df.tail())
