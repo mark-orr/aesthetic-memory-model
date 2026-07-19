@@ -270,6 +270,55 @@ def run_design4(num_songs=100, num_exposures=10000, window=20, seed=42,
     return df
 
 
+def run_design5(num_songs=100, num_exposures=10000, window=20, seed=42,
+                 time_average_mode="cumulative", time_average_window=20, gamma=1.0,
+                 noise=None, decay=None,
+                 config_path="config.yaml",
+                 output_path="results/data/design5_baseline_a4_timeseries.csv"):
+    """Series of Experiments, Design 5 (literature-notes/main-project-idea.txt):
+    identical to Design 4, but using Algorithm A4 instead of A3 -- same
+    random ergodic environment, same {song_id, evaluation} chunk schema,
+    same two goals (evaluation over time, time_averaged_aesthetic_basis over
+    time), but r = gamma * time_averaged_aesthetic_basis. gamma=1.0 reduces
+    exactly to Design 4/Algorithm A3.
+
+    Same double-learning caveat as Design 4: evaluate_a4() learns its own
+    chunk internally, so this does NOT separately call learn_evaluation() on
+    repeat exposures.
+
+    noise/decay override the corresponding pyactup Memory parameters from
+    config_path when not None, so they can be set directly from a notebook."""
+    config = load_config(config_path)
+    if noise is not None:
+        config["noise"] = noise
+    if decay is not None:
+        config["decay"] = decay
+    model = AestheticMemoryModel(
+        **config, time_average_mode=time_average_mode, time_average_window=time_average_window,
+        gamma=gamma)
+    rng = random.Random(seed)
+    song_ids, complexities = make_ergodic_environment(num_songs, seed=seed)
+
+    seen = set()
+    rows = []
+    for trial in range(num_exposures):
+        song_id = rng.choice(song_ids)
+        complexity = complexities[song_id]
+        if song_id in seen:
+            row = model.evaluate_a4(song_id)  # computes AND learns its own chunk
+            row["trial"] = trial
+            row["complexity"] = complexity
+            rows.append(row)
+        else:
+            model.learn_evaluation(song_id, 0.0)  # first-exposure bootstrap only
+        seen.add(song_id)
+
+    df = pd.DataFrame(rows)
+    df["evaluation_rolling_mean"] = df["evaluation"].rolling(window).mean()
+    df.to_csv(output_path, index=False)
+    return df
+
+
 if __name__ == "__main__":
     df = run_design1()
     print(df.tail())

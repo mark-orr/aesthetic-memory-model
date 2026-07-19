@@ -34,6 +34,14 @@ r=the just-updated running average), then learns a new {song_id, evaluation}
 chunk as a final step (confirmed with Mark) -- same schema as A2's, but
 unlike evaluate_a2, evaluate_a3 does this learning itself rather than
 leaving it to the caller.
+
+Algorithm A4 (extension of Algorithm A): identical to A3 (same running
+time_averaged_aesthetic_basis, same chunk-learning-as-final-step), except
+r = gamma * time_averaged_aesthetic_basis instead of the running average
+directly. gamma is a free scaling/tolerance knob on the inverted-U's width
+(the parabola's peak sits at r/2, right root at r) -- confirmed with Mark:
+gamma defaults to 1.0 (reducing exactly to Algorithm A3) and is meant to be
+explored/tuned per model instance, not a single fixed "correct" value.
 """
 
 import math
@@ -47,7 +55,8 @@ from src.utils import inverted_parabola_left_anchored
 class AestheticMemoryModel:
     def __init__(self, noise=0.25, decay=0.5, temperature=None,
                  threshold=None, mismatch=None, optimized_learning=False,
-                 time_average_mode="cumulative", time_average_window=20):
+                 time_average_mode="cumulative", time_average_window=20,
+                 gamma=1.0):
         self.memory = pyactup.Memory(
             noise=noise,
             decay=decay,
@@ -71,6 +80,7 @@ class AestheticMemoryModel:
             deque(maxlen=time_average_window) if time_average_mode == "window" else None
         )
         self.time_averaged_aesthetic_basis = None
+        self.gamma = gamma
 
     def learn_song(self, song_id, complexity, advance=True):
         chunk = self.memory.learn({"song_id": song_id, "complexity": complexity})
@@ -252,4 +262,26 @@ class AestheticMemoryModel:
         if evaluation is not None:
             self.learn_evaluation(song_id, evaluation)
         result.update({"time_averaged_aesthetic_basis": r, "evaluation": evaluation})
+        return result
+
+    def evaluate_a4(self, song_id):
+        """Algorithm A4. Identical to evaluate_a3 except
+        r = gamma * time_averaged_aesthetic_basis (gamma set at construction,
+        default 1.0 -- reduces to exactly Algorithm A3 when gamma=1).
+        evaluation (and the chunk-learning) is skipped when the scaled r is
+        exactly 0 -- true whenever gamma is 0, or whenever the running
+        average itself is 0 (same edge case as A3)."""
+        result = self.aesthetic_basis(song_id)
+        x = result["aesthetic_basis"]
+        raw_r = self._update_time_averaged_basis(x)
+        r = self.gamma * raw_r
+        evaluation = inverted_parabola_left_anchored(x, r) if r else None
+        if evaluation is not None:
+            self.learn_evaluation(song_id, evaluation)
+        result.update({
+            "time_averaged_aesthetic_basis": raw_r,
+            "gamma": self.gamma,
+            "r": r,
+            "evaluation": evaluation,
+        })
         return result
