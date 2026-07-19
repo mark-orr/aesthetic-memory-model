@@ -39,6 +39,26 @@ Algorithm steps:
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
 
+Algorithm C (control):
+Preliminaries: This algorithm integrates Algorithm A4 as a basis model and extends Design 5 into a control system. Instead of an ergodic environment, a control system chooses which song to present next to the memory agent, attempting to maximize "evaluation" of the memory agent. We stage this in two variants.
+
+Algorithm C1 (first-order control, evaluation-only):
+1. The controller observes only the sequence of "evaluation" values it has received back from the memory agent (Algorithm A4) after each trial -- it has no access to the memory agent's internal state (no predicted activation, no aesthetic_basis, no time-averaged aesthetic basis, no chunk activations).
+2. Treat each of the fixed set of songs as an arm of a multi-armed bandit, where the reward for an arm is the "evaluation" received the last time that song was played.
+3. Because the reward for a given song drifts over time (the memory agent's activations and its time-averaged aesthetic basis evolve as the simulation runs), this is a non-stationary bandit, not a stationary one -- use a non-stationary selection policy (e.g., sliding-window UCB or discounted UCB) rather than a policy that assumes a fixed reward distribution per arm.
+4. Each trial: select a song via the bandit policy, present it to the memory agent (Algorithm A4 runs as in Design 5), observe the resulting "evaluation", and update the bandit's reward estimates.
+
+Algorithm C2 (second-order control, privileged state):
+1. Same bandit scaffold as Algorithm C1 (non-stationary multi-armed bandit over the fixed song set, updated from observed "evaluation").
+2. In addition to the observed "evaluation" stream, the controller has privileged access to the memory agent's current time-averaged aesthetic basis "r" (as computed internally by Algorithm A4) -- and nothing else (not predicted activation, not the raw current aesthetic_basis, not chunk-level activations).
+3. Knowing "r" locates the target peak of the inverted-U (evaluation = 1 at aesthetic_basis = r/2), so the controller can bias its exploitation toward songs whose recent observed evaluations suggest they land near that target, rather than simply exploiting whichever song has had the highest observed evaluation historically.
+4. This is a deliberately minimal increment over C1: C2 knows where the peak is but does not directly measure any song's current distance from it (that would require aesthetic_basis or predicted activation, which are withheld) -- it must still learn the song-to-outcome mapping empirically, same as C1, just with a known target to steer toward.
+
+Success metrics for Algorithm C (both C1 and C2):
+- Convergence trial: the first trial at which "evaluation" stays within a defined band (e.g., >= 0.9) for a sustained window of trials.
+- Steady-state performance: mean "evaluation" over a trailing window of trials after the convergence trial.
+
+
 Series of Experiments:
 Design 1:  
 Let us consider that aesthetic_basis as we are now computing as something we want to measure over time (as a time-series).  We want to understand how the aesthetic_basis varies in an agent given its environment.  For example, given a random, ergodic environment over a long-time horizon (say 10000 song exposures over say 100 songs), what is the time-averaged (say a window of 20 exposures) aesthetic_basis?  
@@ -52,7 +72,9 @@ A few notes:
 
 Design 4: This is a baseline study that uses the same design of Design 1, but using Algorithm A3; also, each chunk will have two slots with the name or identifier of the song and the evaluation of the song (as in Design 3).  What we want to see is the following: (1) how does the "evaluation" vary over time, (2) to see how the "time-averaged aesthetic basis varies" varies over time.  
 
-Design 5: This is another baseline study that is idential to Design 4, but using Algorithm A4.   
+Design 5: This is another baseline study that is idential to Design 4, but using Algorithm A4.
+
+Design 6: A control study using Algorithm C. Same fixed song pool as Designs 1, 4, and 5 (not the cyclic Design 2/3 environment -- the controller replaces the environment's song-selection process entirely). Run once with Algorithm C1 (evaluation-only control) and once with Algorithm C2 (privileged access to the time-averaged aesthetic basis "r"), same song pool and same length, to compare convergence trial and steady-state evaluation between the two. As in Design 4/5, memory chunks are {song_id, evaluation}, and evaluate_a4()'s own internal chunk-learning step still applies (no separate learn_evaluation call needed).
 
 Design X: INCOMPLETE THOUGTH< DO NOT IMPLEMENT.  Evo Game Theory approach where multiple songs compete and the strategy rules reference schedules of play for a song or set of songs. 
 

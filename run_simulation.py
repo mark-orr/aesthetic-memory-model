@@ -12,6 +12,7 @@ import random
 import pandas as pd
 import yaml
 
+from src.controller import ChangeAwareUCB, SlidingWindowUCB
 from src.model import AestheticMemoryModel
 
 # Toy listening sequence: (song_id, complexity). Replace with real stimulus data.
@@ -311,6 +312,86 @@ def run_design5(num_songs=100, num_exposures=10000, window=20, seed=42,
             rows.append(row)
         else:
             model.learn_evaluation(song_id, 0.0)  # first-exposure bootstrap only
+        seen.add(song_id)
+
+    df = pd.DataFrame(rows)
+    df["evaluation_rolling_mean"] = df["evaluation"].rolling(window).mean()
+    df.to_csv(output_path, index=False)
+    return df
+
+
+def run_design6(controller="c1", num_songs=100, num_exposures=10000, window=20, seed=42,
+                 time_average_mode="cumulative", time_average_window=20, gamma=1.0,
+                 bandit_window=50, bandit_c=2.0, r_change_threshold=0.15,
+                 noise=None, decay=None,
+                 config_path="config.yaml",
+                 output_path=None):
+    """Series of Experiments, Design 6 (literature-notes/main-project-idea.txt):
+    Algorithm C control study. Same random ergodic song pool as Designs 1/4/5,
+    same Algorithm A4 basis and {song_id, evaluation} chunk schema as Design 5,
+    but the environment's uniform i.i.d. song draw is replaced by a bandit
+    controller choosing which song to present next, trying to maximize
+    `evaluation`.
+
+    controller="c1": Algorithm C1 -- SlidingWindowUCB, reward = observed
+    `evaluation` only, no access to the memory agent's internal state.
+
+    controller="c2": Algorithm C2 -- same bandit, plus privileged access to
+    the memory agent's live gamma-scaled time-averaged aesthetic basis `r`
+    (the target peak is at aesthetic_basis = r/2). When `r` shifts by more
+    than `r_change_threshold` (relative) between trials, the bandit's reward
+    history is reset, letting it re-adapt immediately instead of waiting for
+    stale rewards to age out of its sliding window.
+
+    Same double-learning caveat as Design 4/5: evaluate_a4() learns its own
+    chunk internally, so this does NOT separately call learn_evaluation() on
+    repeat exposures. A song's bootstrap play (learn_evaluation(song_id, 0.0))
+    is also reported to the bandit as a reward of 0.0, marking the arm as
+    played so select()'s forced-exploration pass doesn't pick it forever.
+
+    noise/decay override the corresponding pyactup Memory parameters from
+    config_path when not None, so they can be set directly from a notebook."""
+    if output_path is None:
+        output_path = f"results/data/design6_{controller}_timeseries.csv"
+
+    config = load_config(config_path)
+    if noise is not None:
+        config["noise"] = noise
+    if decay is not None:
+        config["decay"] = decay
+    model = AestheticMemoryModel(
+        **config, time_average_mode=time_average_mode, time_average_window=time_average_window,
+        gamma=gamma)
+    rng = random.Random(seed)
+    song_ids, complexities = make_ergodic_environment(num_songs, seed=seed)
+
+    if controller == "c1":
+        bandit = SlidingWindowUCB(song_ids, window=bandit_window, c=bandit_c, rng=rng)
+    elif controller == "c2":
+        bandit = ChangeAwareUCB(song_ids, window=bandit_window, c=bandit_c, rng=rng,
+                                 r_change_threshold=r_change_threshold)
+    else:
+        raise ValueError(f"unknown controller: {controller!r}")
+
+    seen = set()
+    rows = []
+    last_r = None
+    for trial in range(num_exposures):
+        if controller == "c2":
+            bandit.observe_r(last_r)
+        song_id = bandit.select()
+        complexity = complexities[song_id]
+        if song_id not in seen:
+            model.learn_evaluation(song_id, 0.0)  # first-exposure bootstrap only
+            bandit.update(song_id, 0.0)
+        else:
+            row = model.evaluate_a4(song_id)  # computes AND learns its own chunk
+            if row["evaluation"] is not None:
+                bandit.update(song_id, row["evaluation"])
+                last_r = row["r"]
+                row["trial"] = trial
+                row["complexity"] = complexity
+                rows.append(row)
         seen.add(song_id)
 
     df = pd.DataFrame(rows)
