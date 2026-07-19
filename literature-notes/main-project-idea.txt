@@ -18,6 +18,15 @@ Algorithm A2 (extension of Algorithm A):
 5. multiply g(y) * f(x) and call it "evaluation"
 6. encode (learn) a new chunk for the song with the lable of the song as one slot and the evaluation as another. 
 
+Algorighm A3 (extension of Algorithm A):
+Preliminary requirements:
+A. this algorithm keeps a running average of what we have been calling "aesthetic basis".  It will be used as a central piece of the algorithm.  At its core it computes a time-averaged value of "aesthetic basis" as a simulation is running.  Further we parameterize it by the width of the time window for which it is computed. The parameterization we will need to discuss; one requirement is that there will be a mode to have a cumulative version of this time-average and there will also be a moving window version of this time-average.   Lets call it time-average aesthetic basis or something with that semantic. 
+Algorithm steps:
+1. Compute steps 1-4 from evaluaton A.
+2. Update the "time-averaged aesthetic basis" using the current "aesthetic basis" as a new input to its calculation.
+3. Compute the "evaluation" as inverted_parabola_left_anchore(x, r), where x is the output of step 1 (i.e., x is the current"aesthetic basis") and r is the new "time-averaged aesthetic basis" 
+
+
 Algorithm B (similarity comparison):
 1. NOT COMPLETED YET, BUT LIKELY SIMILAR TO Algorithm A but with similarity as a basis in place of chunk activation.  
 

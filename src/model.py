@@ -21,16 +21,33 @@ returns whichever of that song's chunks currently has the highest activation.
 evaluation is undefined for a song's first exposure (no chunk yet) and its
 second (only one prior activation reading exists, no diff possible yet); the
 caller decides what placeholder to encode during this bootstrap period.
+
+Algorithm A3 (extension of Algorithm A): keeps a single running average of
+"aesthetic basis" across the whole simulation (not per-song -- confirmed
+with Mark), in either "cumulative" mode (average of all values seen so far)
+or "window" mode (average of the last time_average_window values, growing
+until the window fills -- confirmed with Mark that a partial-window average
+is used rather than leaving it undefined). Each trial: run Algorithm A,
+update the running average with the resulting aesthetic_basis, then
+evaluation = inverted_parabola_left_anchored(x=aesthetic_basis_now,
+r=the just-updated running average). Note Algorithm A3 as specified in
+main-project-idea.txt has no chunk-learning step (unlike A2's step 6) --
+evaluate_a3 doesn't call learn_song/learn_evaluation; the caller decides
+whether/how to encode anything.
 """
 
 import math
+from collections import deque
 
 import pyactup
+
+from src.utils import inverted_parabola_left_anchored
 
 
 class AestheticMemoryModel:
     def __init__(self, noise=0.25, decay=0.5, temperature=None,
-                 threshold=None, mismatch=None, optimized_learning=False):
+                 threshold=None, mismatch=None, optimized_learning=False,
+                 time_average_mode="cumulative", time_average_window=20):
         self.memory = pyactup.Memory(
             noise=noise,
             decay=decay,
@@ -42,6 +59,18 @@ class AestheticMemoryModel:
         self._last_actual_activation = {}
         self._pinned_activations = {}
         self._adjustments = {}
+
+        if time_average_mode not in ("cumulative", "window"):
+            raise ValueError(
+                f"time_average_mode must be 'cumulative' or 'window' (got {time_average_mode!r})")
+        self._time_average_mode = time_average_mode
+        self._time_average_window = time_average_window
+        self._aesthetic_basis_count = 0
+        self._aesthetic_basis_sum = 0.0
+        self._aesthetic_basis_history = (
+            deque(maxlen=time_average_window) if time_average_mode == "window" else None
+        )
+        self.time_averaged_aesthetic_basis = None
 
     def learn_song(self, song_id, complexity, advance=True):
         chunk = self.memory.learn({"song_id": song_id, "complexity": complexity})
@@ -183,4 +212,31 @@ class AestheticMemoryModel:
         self._last_actual_activation[song_id] = actual_now
 
         result.update({"x": x, "f_x": f_x, "y": y, "g_y": g_y, "evaluation": evaluation})
+        return result
+
+    def _update_time_averaged_basis(self, aesthetic_basis):
+        """Updates the single, global running average of aesthetic_basis
+        (across all songs/trials) and returns its new value."""
+        if self._time_average_mode == "cumulative":
+            self._aesthetic_basis_count += 1
+            self._aesthetic_basis_sum += aesthetic_basis
+            self.time_averaged_aesthetic_basis = (
+                self._aesthetic_basis_sum / self._aesthetic_basis_count)
+        else:  # "window"
+            self._aesthetic_basis_history.append(aesthetic_basis)
+            self.time_averaged_aesthetic_basis = (
+                sum(self._aesthetic_basis_history) / len(self._aesthetic_basis_history))
+        return self.time_averaged_aesthetic_basis
+
+    def evaluate_a3(self, song_id):
+        """Algorithm A3. Runs Algorithm A, updates the running
+        time_averaged_aesthetic_basis with the resulting aesthetic_basis,
+        then evaluation = inverted_parabola_left_anchored(x=aesthetic_basis,
+        r=the updated running average). evaluation is None if the running
+        average is exactly 0 (the parabola's formula divides by r)."""
+        result = self.aesthetic_basis(song_id)
+        x = result["aesthetic_basis"]
+        r = self._update_time_averaged_basis(x)
+        evaluation = inverted_parabola_left_anchored(x, r) if r else None
+        result.update({"time_averaged_aesthetic_basis": r, "evaluation": evaluation})
         return result
