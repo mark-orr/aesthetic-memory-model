@@ -22,5 +22,5 @@ results/figures/*
 !results/data/.gitkeep
 !results/figures/.gitkeep
 
-# Slide decks -- kept local only
-presentation/*.pptx
+# Office lock/temp files
+~$*

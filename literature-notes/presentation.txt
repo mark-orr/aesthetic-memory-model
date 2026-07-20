@@ -2,6 +2,8 @@ Draft 1:  I am presenting a pdf based slide deck at a scientific conference.  I'
 
 Draft 2: I am presenting a pdf based slide deck at a scientific conference. Parameters for the pdf slide deck are:
 Parameter 1 - Use grayscale color scheme with a little yellow and medium blue.
-Parameter 2 - Focus on Designs 4 and X.
+Parameter 2 - Focus on Designs 5 and 6 only, describing the reasoning and the algorithms and the results; make sure to go into detial and leave a place-holder for me to go to https://mark-orr.github.io/aesthetic-memory-model/design5-demo-2.html/ as a demo of the internals of the model. 
 Parameter 3 - Use some key notions to summarize the following articles in "literature-notes": "Orr and Ohlsson - 2001...", "Orr-RelationshipComplexity..." and "Chimiel2017...".  This summary will form the introduction/background/motivation component of the slide deck.
-Parameter 4 - 
+Parameter 4 - End with some ideas for testing this highly theoretical model and its control in the future.
+
+End-of-File
