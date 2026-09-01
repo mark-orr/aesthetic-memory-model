@@ -89,9 +89,12 @@ class AestheticMemoryModel:
         return chunk
 
     def learn_evaluation(self, song_id, evaluation, advance=True):
+        """advance accepts True (advance by 1, the default), False (don't
+        advance), or a number (advance by that amount -- e.g. real elapsed
+        time between exposures instead of a uniform tick)."""
         chunk = self.memory.learn({"song_id": song_id, "evaluation": evaluation})
         if advance:
-            self.memory.advance()
+            self.memory.advance(1 if advance is True else advance)
         return chunk
 
     def _activation_of(self, slots):
@@ -238,7 +241,7 @@ class AestheticMemoryModel:
                 sum(self._aesthetic_basis_history) / len(self._aesthetic_basis_history))
         return self.time_averaged_aesthetic_basis
 
-    def evaluate_a3(self, song_id):
+    def evaluate_a3(self, song_id, advance=True):
         """Algorithm A3. Runs Algorithm A, updates the running
         time_averaged_aesthetic_basis with the resulting aesthetic_basis,
         computes evaluation = inverted_parabola_left_anchored(x=aesthetic_basis,
@@ -260,24 +263,27 @@ class AestheticMemoryModel:
         r = self._update_time_averaged_basis(x)
         evaluation = inverted_parabola_left_anchored(x, r) if r else None
         if evaluation is not None:
-            self.learn_evaluation(song_id, evaluation)
+            self.learn_evaluation(song_id, evaluation, advance=advance)
         result.update({"time_averaged_aesthetic_basis": r, "evaluation": evaluation})
         return result
 
-    def evaluate_a4(self, song_id):
+    def evaluate_a4(self, song_id, advance=True):
         """Algorithm A4. Identical to evaluate_a3 except
         r = gamma * time_averaged_aesthetic_basis (gamma set at construction,
         default 1.0 -- reduces to exactly Algorithm A3 when gamma=1).
         evaluation (and the chunk-learning) is skipped when the scaled r is
         exactly 0 -- true whenever gamma is 0, or whenever the running
-        average itself is 0 (same edge case as A3)."""
+        average itself is 0 (same edge case as A3).
+
+        advance is forwarded to the internal learn_evaluation call -- see
+        its docstring (True/False/number)."""
         result = self.aesthetic_basis(song_id)
         x = result["aesthetic_basis"]
         raw_r = self._update_time_averaged_basis(x)
         r = self.gamma * raw_r
         evaluation = inverted_parabola_left_anchored(x, r) if r else None
         if evaluation is not None:
-            self.learn_evaluation(song_id, evaluation)
+            self.learn_evaluation(song_id, evaluation, advance=advance)
         result.update({
             "time_averaged_aesthetic_basis": raw_r,
             "gamma": self.gamma,

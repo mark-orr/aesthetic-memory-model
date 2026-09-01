@@ -1,0 +1,116 @@
+% Fragment: the fundamental agent process, from a single song exposure to its
+% evaluation (Algorithm A4, as implemented in src/model.py -- AestheticMemoryModel).
+% Assumes \usepackage{amsmath} in the enclosing document. Not a standalone document
+% (no \documentclass/\begin{document}) -- intended for \input{} or copy-paste into
+% a larger manuscript.
+
+\subsection*{From Exposure to Evaluation: The Aesthetic Judgment Process}
+
+Let $t$ denote the memory's current time, and let a \emph{chunk} $c$ be a
+declarative memory unit $c = \{\,\mathrm{song}(c),\ \mathrm{val}(c)\,\}$, where
+$\mathrm{song}(c)$ is a song identifier and $\mathrm{val}(c)$ is that chunk's
+stored evaluation value. Because $\mathrm{val}(c)$ is a continuous quantity,
+each successive exposure to a song ordinarily creates a \emph{new} chunk rather
+than reinforcing an existing one (two chunks are treated as identical, and
+hence reinforceable, only when every slot value matches exactly); a song $j$
+may therefore have several distinct chunks $\{c : \mathrm{song}(c) = j\}$
+accumulated in memory at time $t$, each with its own encoding history.
+
+\paragraph{Base-level activation.}
+Each chunk $c$ has a set of reference times $t_{c,1} < t_{c,2} < \cdots <
+t_{c,n_c} < t$, one per creation or reinforcement of $c$ prior to $t$. Its
+base-level activation is
+\[
+B(c,t) \;=\; \ln \sum_{i=1}^{n_c} \bigl(t - t_{c,i}\bigr)^{-d},
+\]
+where $d>0$ is the memory's decay parameter. Retrieval activation adds
+independent noise,
+\[
+A(c,t) \;=\; B(c,t) + \varepsilon_c, \qquad
+\varepsilon_c \sim \mathrm{Logistic}(0,\eta),
+\]
+drawn fresh at \emph{every} retrieval, with scale $\eta$ the memory's noise
+parameter. (The memory's activation threshold and mismatch/similarity
+parameters are disabled throughout this work, so retrieval reduces to an
+unconstrained arg max over exactly-matching candidate chunks, with no minimum
+activation required.)
+
+\paragraph{Step 1 -- prediction.}
+On exposure to a song $j$ at time $t$, the memory first retrieves whichever
+chunk anywhere in memory currently has the highest activation, with no
+constraint on which song it belongs to:
+\begin{align*}
+\hat c_{\mathrm{pred}}(t) &= \operatorname*{arg\,max}_{c \,\in\, M(t)} A(c,t), \\
+A_{\mathrm{pred}}(t) &= A\bigl(\hat c_{\mathrm{pred}}(t),\, t\bigr),
+\end{align*}
+where $M(t)$ is the set of all chunks in memory at time $t$.
+
+\paragraph{Step 2 -- actual activation.}
+The memory then retrieves, among only the chunks belonging to $j$ itself, the
+one with highest activation:
+\begin{align*}
+\hat c_j(t) &= \operatorname*{arg\,max}_{c \,\in\, M(t),\ \mathrm{song}(c) = j} A(c,t), \\
+A_j(t) &= A\bigl(\hat c_j(t),\, t\bigr).
+\end{align*}
+This presupposes $j$ already has at least one chunk in memory. On a song's
+first-ever exposure no such chunk exists, so $A_j(t)$ is undefined; a
+placeholder chunk $\{j,\,0\}$ is encoded instead and no further computation is
+performed on that trial (see the Bootstrap remark below).
+
+\emph{Remark.} Steps 1 and 2 issue two separate retrievals, each drawing its
+own noise realization -- so even on a trial where the predicted chunk and the
+actual song's retrieved chunk coincide, $A_{\mathrm{pred}}(t)$ and $A_j(t)$ are
+generically unequal.
+
+\paragraph{Steps 3--4 -- aesthetic basis.}
+The aesthetic basis of this exposure is the absolute activation gap between
+prediction and actuality:
+\[
+x(t) \;=\; \bigl|\, A_{\mathrm{pred}}(t) - A_j(t) \,\bigr|.
+\]
+
+\paragraph{Running time-averaged aesthetic basis.}
+Let $x_1, x_2, \ldots$ denote the sequence of aesthetic-basis values computed
+across \emph{all} trials of the run (pooled across songs, not kept separately
+per song), and let $N(t)$ index the current trial in that sequence, so that
+$x_{N(t)} = x(t)$. The model maintains a single running average, in one of two
+modes. Writing $K(t) = \max\bigl(1,\, N(t)-W+1\bigr)$ for the window's
+starting index,
+\[
+\bar x(t) \;=\;
+\begin{cases}
+\dfrac{1}{N(t)} \displaystyle\sum_{k=1}^{N(t)} x_k, & \text{cumulative}, \\[2.2ex]
+\dfrac{1}{N(t)-K(t)+1} \displaystyle\sum_{k=K(t)}^{N(t)} x_k, & \text{window},
+\end{cases}
+\]
+updated to include $x(t)$ itself before it is used in the step below.
+
+\paragraph{Target width.}
+A single free scaling parameter $\gamma > 0$ sets the effective target width
+of the inverted-U:
+\[
+r(t) \;=\; \gamma\, \bar x(t).
+\]
+($\gamma = 1$ reduces this to using the running average directly.)
+
+\paragraph{Evaluation.}
+Provided $r(t) \neq 0$, the exposure's evaluation is a left-anchored inverted
+parabola in $x(t)$ -- left root at $0$, vertex ($=1$) at $x = r(t)/2$, right
+root at $x = r(t)$:
+\[
+\mathrm{eval}(t) \;=\; 1 - \left( \frac{2\,x(t)}{r(t)} - 1 \right)^{\!2}.
+\]
+When $r(t) = 0$, the evaluation -- and the encoding step below -- are skipped
+for that trial.
+
+\paragraph{Encoding.}
+A new chunk $\{j,\ \mathrm{eval}(t)\}$ is learned into memory at time $t$, and
+the memory's clock then advances, $t \mapsto t + \Delta t$ (a uniform tick,
+$\Delta t = 1$, in the designs discussed here unless otherwise noted).
+
+\paragraph{Bootstrap.}
+A song's first exposure in a run has no prior chunk of its own, so $A_j(t)$
+(Step 2) cannot be computed; the placeholder chunk $\{j,\,0\}$ noted above is
+encoded in its place, and $x(t)$, $\bar x(t)$, and $\mathrm{eval}(t)$ are all
+left undefined for that trial. Only a song's second and later exposures --
+its repeats -- carry the full Steps 1--4 computation above.

@@ -24,3 +24,7 @@ results/figures/*
 
 # Office lock/temp files
 ~$*
+
+# Real listening-session data (large; public repo, keep local only)
+data_all/
+data_all.zip

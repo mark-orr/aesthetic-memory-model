@@ -1,0 +1,92 @@
+% Fragment: session-selection/filtering logic for the real-data validation study
+% (run_simulation.py -- qualifying_sessions, no_repeat_sessions, and the sampling
+% helpers built on them). Assumes \usepackage{amsmath} in the enclosing document.
+% Not a standalone document -- intended for \input{} or copy-paste into a larger
+% manuscript. Companion to agent_process.txt.
+
+\subsection*{Session Selection and Filtering}
+
+\paragraph{Data source.}
+Real listening data is drawn from the Music Streaming Sessions Dataset (MSSD;
+Brost, Mehrotra \& Jehan, 2019), specifically its WSDM Cup 2019 skip-prediction
+log release: daily log files of anonymized listening sessions, each row a
+single track play carrying a session identifier, that play's ordinal position
+within the session, the session's total length, a track identifier, a set of
+graded skip indicators, and contextual fields (date, hour of day, and others
+not used here). A session is defined by the source dataset as a maximal run of
+plays separated by no more than 60 seconds of inactivity, truncated at a
+maximum of 20 plays. Critically, session identifiers carry \emph{no listener
+identity}: two sessions cannot be attributed to the same individual, even when
+adjacent in time. Consequently the unit of analysis throughout this work is
+the individual session, and each session is presented to its own freshly
+initialized memory instance (see the agent process description elsewhere in
+this manuscript); no chunk state is ever shared across sessions.
+
+\paragraph{Base filter.}
+Let a session $\sigma$ be an ordered sequence of plays $\sigma = (p_1, \ldots,
+p_L)$, where $L = \mathrm{length}(\sigma)$ and $\mathrm{track}(p_i)$ is the
+track identity played at position $i$. All analyses reported here first
+restrict to maximal-length sessions,
+\[
+\mathcal S_{20} \;=\; \{\, \sigma : \mathrm{length}(\sigma) = 20 \,\},
+\]
+so that session length is held fixed and does not itself confound comparisons
+across sessions.
+
+\paragraph{Repeats, first occurrences, and gaps.}
+For $\sigma \in \mathcal S_{20}$ and a track $j$ appearing in $\sigma$, define
+its first-occurrence position
+\[
+\mathrm{first}(j,\sigma) \;=\; \min\{\, i : \mathrm{track}(p_i) = j \,\}.
+\]
+Track $j$ \emph{repeats} in $\sigma$ if it occurs at some later position $i >
+\mathrm{first}(j,\sigma)$; for any such repeat occurrence, its \emph{gap} is
+\[
+g(i,\sigma) \;=\; i - \mathrm{first}\bigl(\mathrm{track}(p_i),\, \sigma\bigr).
+\]
+This matters because the agent process (Algorithm A4) can only produce an
+evaluation on a repeat occurrence -- a track's first play in a session has no
+prior chunk of its own to compare against, and is instead absorbed by the
+bootstrap step.
+
+\paragraph{Session populations.}
+Two complementary subsets of $\mathcal S_{20}$ are used. \emph{Qualifying
+sessions} are those containing at least one repeat, with no restriction on
+where that repeat falls or how far it sits from its first occurrence:
+\[
+\mathcal Q \;=\; \{\, \sigma \in \mathcal S_{20} : \text{some track in }
+\sigma \text{ repeats} \,\}.
+\]
+\emph{No-repeat control sessions} are the complementary case in which every
+track is distinct:
+\[
+\mathcal N \;=\; \mathcal S_{20} \setminus \mathcal Q
+\;=\; \{\, \sigma \in \mathcal S_{20} : \text{every track in } \sigma
+\text{ is distinct} \,\}.
+\]
+No position in a session drawn from $\mathcal N$ can ever produce an
+evaluable trial under the plain (no-burn-in) protocol, since none of its
+tracks ever repeat; such sessions are usable only under a burn-in procedure
+(described separately) that primes every track with a chunk before the
+session's own data is played. For $\mathcal Q$, every evaluable row instead
+records where that repeat actually fell, as data rather than as a filter:
+$\mathrm{first\_occurrence\_position}(p_i) = \mathrm{first}(\mathrm{track}(p_i),\sigma)$
+and $\mathrm{repeat\_gap}(p_i) = g(i,\sigma)$ are carried alongside its
+evaluation, so their relationship to outcomes can be examined directly rather
+than imposed by the sampling frame. When a track repeats more than once in a
+session, both quantities are computed against its true first occurrence, not
+its most recent prior occurrence.
+
+\paragraph{Sampling.}
+Within a chosen population ($\mathcal Q$ or $\mathcal N$) restricted to one
+day's log, a simple random sample without
+replacement was drawn (seeded for reproducibility); this was repeated across
+several days' logs, evenly spaced across the full collection period rather
+than concentrated on one day, and the resulting sessions pooled. Sample sizes
+were chosen per experiment based on the per-session computational cost of the
+evaluation protocol in use (Section on burn-in procedures) and are reported
+alongside each result rather than fixed here.
+
+\emph{Data-quality note.} Of 60 daily log files, 4 were found to be entirely
+corrupted (contiguous null bytes throughout, not merely truncated) and were
+excluded from every sampling frame above.

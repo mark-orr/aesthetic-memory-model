@@ -1,0 +1,167 @@
+% Fragment: Study 1 (Design 5, uncontrolled baseline) and Study 2 (Design 6,
+% bandit control C1/C2), described from notebooks/design5_baseline_a4.ipynb and
+% notebooks/design6_control_c1c2.ipynb exactly as last rendered (2026-08-31).
+% Requires \usepackage{graphicx} in the enclosing document (a plain
+% \begin{tabular} is also used, no extra package needed for that). The four
+% \includegraphics calls below reference bare filenames -- point the master
+% document at the actual figures with, e.g.,
+%   \graphicspath{{results/figures/}}
+% (path relative to wherever the master .tex file lives) rather than editing
+% the paths in this fragment. Not a standalone document -- intended for
+% \input{} or copy-paste into a larger manuscript. Companion to
+% agent_process.txt.
+
+\subsection*{Study 1: Baseline Dynamics (Design 5)}
+
+\paragraph{Design.}
+Study 1 exposes the Algorithm A4 agent (agent process, above) to a stationary,
+random environment: a fixed pool of songs drawn once and then sampled
+uniformly at random with replacement, trial after trial, with no notion of a
+controller or a real listener -- this is the model's own uncontrolled
+behavior in isolation, and the reference point every later study is compared
+against.
+
+\paragraph{Parameters.}
+Song pool size $10$; $200$ exposures; noise $0.25$; decay $0.5$; $\gamma=2.0$;
+running average in window mode, width $20$; song sequence seeded ($\text{seed}=42$).
+Of the $200$ exposures, $190$ are evaluable (each song's own first exposure is
+absorbed by the bootstrap step and contributes no evaluation).
+
+\paragraph{Results.}
+Raw \texttt{evaluation} oscillates between the theoretical ceiling of $1$ and
+sharp negative excursions (as low as $-3.79$, at trial $26$), consistent with
+the inverted parabola's shape: unbounded below, capped at $1$ above. Its
+$20$-trial rolling mean starts low (roughly $0.15$--$0.3$) through about trial
+$48$, then rises sharply to about $0.65$--$0.7$ and holds within a band of
+roughly $0.5$--$0.8$ for most of the remaining run -- dipping to about
+$0.45$--$0.5$ near trials $140$--$160$, rising briefly to about $0.8$ near
+trials $175$--$185$, and settling back to about $0.65$--$0.7$ by the run's end
+(Figure~\ref{fig:design5-evaluation}). Over the full run, mean
+\texttt{evaluation} is $0.609$ (s.d.\ $0.586$), median $0.774$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\columnwidth]{design5_evaluation_timeseries.pdf}
+\caption{Study 1: raw \texttt{evaluation} per trial (light blue) and its
+$20$-trial rolling mean (orange) over the $200$-exposure run.}
+\label{fig:design5-evaluation}
+\end{figure}
+
+The running \texttt{time\_averaged\_aesthetic\_basis} (window mode) rises from
+its initial value of about $0.33$ over the first $\sim\!10$ trials, then
+fluctuates within roughly $0.6$--$1.25$ for the remainder of the run (mean
+$0.993$, range $0.326$--$1.246$). Because $\gamma=2$ here, $r = \gamma \cdot
+\overline x$ tracks the same shape at twice the scale, oscillating between
+about $1.25$ and $2.5$ (mean $1.987$, range $0.652$--$2.492$) -- at $\gamma=1$
+this line would coincide exactly with $\overline x$, reducing to Design
+4/Algorithm A3's behavior.
+Qualitatively, both the running average and $r$ drift up and down over the
+course of the run rather than converging to a constant, tracking whatever
+sequence of songs the stationary environment happens to have produced
+recently -- the inverted-U's target width is a moving one even in this
+simplest, uncontrolled setting (Figure~\ref{fig:design5-basis}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\columnwidth]{design5_time_averaged_basis.pdf}
+\caption{Study 1: raw \texttt{aesthetic\_basis} per trial (light blue),
+its running average $\overline x$ in window mode (green), and
+$r=\gamma\cdot\overline x$ at $\gamma=2.0$ (red, dashed).}
+\label{fig:design5-basis}
+\end{figure}
+
+\subsection*{Study 2: Bandit Control (Design 6)}
+
+\paragraph{Design.}
+Study 2 replaces Study 1's uniform random song draw with a controller that
+chooses which song to present next, in two variants, and compares both
+against an uncontrolled baseline run at otherwise identical parameters.
+Algorithm C1 is a non-stationary (sliding-window) UCB bandit over the fixed
+song pool, whose only signal is the \texttt{evaluation} value most recently
+observed for each song -- it has no access to the memory agent's internal
+state. Algorithm C2 is the same bandit augmented with privileged access to
+the agent's live $r$ (which locates the inverted-U's peak at $\mathrm{aesthetic\_basis} =
+r/2$): whenever $r$ shifts by more than a relative threshold between trials,
+C2 resets its accumulated reward statistics outright, letting it re-adapt
+immediately to a moved target rather than waiting for stale rewards to age
+out of its own sliding window.
+
+\paragraph{Parameters.}
+All three conditions (uncontrolled baseline, C1, C2) share the same
+environment and agent parameters: song pool size $30$; $600$ exposures; noise
+$0.25$; decay $0.5$; $\gamma=2.0$; running average in window mode, width $20$;
+seed $42$. Bandit-specific parameters (C1 and C2 alike): sliding window $20$,
+UCB exploration constant $c=2.0$; C2's relative change-point threshold on $r$
+is $0.15$. Convergence is assessed by the criterion \texttt{evaluation}
+sustains at least $0.9$ for $20$ consecutive trials, with steady-state
+performance then averaged over the following $100$ trials.
+
+\emph{Caveat.} pyactup's own activation-noise generator cannot be seeded
+independently of the rest of the run, so a shared \texttt{seed} does not make
+noise draws identical across the three conditions when $\text{noise}>0$; the
+comparison below is therefore not a strictly matched, reproducible one, only
+a single noisy realization of each condition. It is reported as run; the
+qualitative ranking (C2 best, uncontrolled baseline worst) should be
+confirmed with a $\text{noise}=0$ rerun before being treated as robust.
+
+\paragraph{Results.}
+Neither controller ever sustains $20$ consecutive trials at
+$\mathrm{evaluation} \ge 0.9$ at these settings (both convergence trial and
+steady-state mean are undefined for C1 and C2 alike) -- \texttt{evaluation}'s
+downside is unbounded while its upside is capped at $1$, so a strict
+streak-based criterion is a demanding bar here. Median and mean
+\texttt{evaluation} over the full run instead show a consistent ordering
+(Table~\ref{tab:design6-comparison}).
+
+\begin{table}[t]
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcc}
+condition & median eval. & mean eval. \\
+\hline
+uncontrolled baseline & 0.916 & 0.800 \\
+C1 (evaluation-only) & 0.962 & 0.887 \\
+C2 (privileged $r$) & 0.968 & 0.916 \\
+\end{tabular}
+\caption{Study 2: median and mean \texttt{evaluation} over the full run,
+by condition.}
+\label{tab:design6-comparison}
+\end{table}
+
+C2 improves on both measures over both alternatives; C1 improves on the
+uncontrolled baseline's median more than its mean, since C1's rolling-mean
+trajectory tracks C2 closely for roughly the first two-thirds of the run but
+then declines over its final $\sim\!150$ trials (dipping as low as
+$\sim\!0.55$--$0.6$ by the run's end, versus C2 remaining mostly above
+$0.85$ throughout) -- a large excursion the mean is sensitive to but the
+median is not. Visually, the uncontrolled baseline sits conspicuously below
+both controllers for nearly the entire run, repeatedly dipping to
+$0.4$--$0.6$ (even lower in its first $\sim\!50$ trials) where C1 and C2
+mostly remain above $0.85$ (Figure~\ref{fig:design6-comparison}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\columnwidth]{design6_evaluation_comparison.pdf}
+\caption{Study 2: $20$-trial rolling-mean \texttt{evaluation} over the
+$600$-exposure run for the uncontrolled baseline (gray), C1 (blue), and C2
+(red).}
+\label{fig:design6-comparison}
+\end{figure}
+
+C2's own observed $r$ (its privileged signal) is genuinely non-stationary
+over the run (range $2.92$--$5.40$, mean $3.45$): after an initial transient
+spike to its maximum of $5.40$ within the first $\sim\!30$ trials, it settles
+into a repeating pattern of rise-and-fall cycles within roughly $3.0$--$4.15$
+for the remainder of the run (peaks near trials $60$, $120$, $245$, $320$,
+$430$, and $500$; troughs near trials $35$, $100$, $195$, $290$, $380$, and
+$475$) -- direct confirmation that the inverted-U's target genuinely drifts
+during the run, which is the premise C2's change-point reset is designed to
+track (Figure~\ref{fig:design6-r}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\columnwidth]{design6_c2_r_trajectory.pdf}
+\caption{Study 2: C2's privileged signal $r$ over the course of the run,
+showing several complete non-stationary rise-and-fall cycles.}
+\label{fig:design6-r}
+\end{figure}

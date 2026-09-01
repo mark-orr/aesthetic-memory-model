@@ -1,0 +1,117 @@
+% Fragment: Study 3, real-data validation (position-unrestricted), described
+% from notebooks/real_data_position_tracking_analysis.ipynb exactly as last
+% rendered (2026-08-31), reading results/data/real_sessions_no_position_restriction_sample.csv.
+% Requires \usepackage{graphicx} in the enclosing document. The three
+% \includegraphics calls below reference bare filenames -- point the master
+% document at the actual figures with, e.g., \graphicspath{{results/figures/}}
+% rather than editing the paths in this fragment. Not a standalone document --
+% intended for \input{} or copy-paste into a larger manuscript. Companion to
+% agent_process.txt and session_selection.txt (uses that fragment's
+% $\mathcal Q$ population and first\_occurrence\_position/repeat\_gap
+% covariates directly).
+
+\subsection*{Study 3: Real-Data Validation (Position-Unrestricted)}
+
+\paragraph{Design.}
+Studies 1 and 2 exercised the agent in synthetic environments. Study 3 moves
+to real listening data (session selection, above): the Algorithm A4 agent is
+run once, single-pass, over each session in $\mathcal Q$ (session length
+$20$, at least one repeat, no restriction on where it falls), with a fresh
+model instance per session as before. Every evaluable row additionally
+carries $\mathrm{first\_occurrence\_position}$ and $\mathrm{repeat\_gap}$
+(session selection, above), and Mark's derived binary behavioral label
+\texttt{real\_skip} (\texttt{skip\_1} or \texttt{skip\_2}
+$\Rightarrow 1$; else \texttt{skip\_3} or \texttt{not\_skipped}
+$\Rightarrow 0$; else undefined) -- computed from the dataset's own skip
+indicators but never learned into memory or used in computing
+\texttt{evaluation}, so this is a validation comparison, not supervision.
+
+\paragraph{Parameters.}
+Five log files, evenly spaced across the collection period (2018-07-16,
+07-31, 08-15, 08-28, 09-15); up to $1000$ sessions sampled per file
+(seed $42$) from $\mathcal Q$ -- $4473$ sessions in total (one file supplied
+only $473$, being much smaller overall than the other four), yielding
+$19822$ raw evaluable rows. Model parameters at their defaults: noise
+$0.25$, decay $0.5$, $\gamma=1.0$, running average in cumulative mode
+(width $20$ unused in this mode), tick-based time advance.
+
+\emph{Exclusions.} $416$ rows with an undefined \texttt{real\_skip}
+(neither skip condition holds) are dropped ($19822 \to 19406$), then each
+session's first evaluable trial is dropped (the same forced
+$\mathrm{evaluation}=0$ artifact discussed for the synthetic studies) --
+leaving $14957$ rows across $3761$ sessions for everything below.
+
+\paragraph{Results.}
+\texttt{evaluation} and \texttt{real\_skip} correlate in the theoretically
+expected direction -- lower predicted evaluation associates with a higher
+probability of a real skip -- though the effect is small: Pearson
+$r=-0.0199$, Spearman $r=-0.0417$. Figure~\ref{fig:study3-eval} shows this
+directly: binned skip rate declines fairly smoothly from about $0.57$ (at
+$\mathrm{evaluation}\approx-6.7$) to about $0.49$--$0.52$ (at
+$\mathrm{evaluation}\approx 0$--$1$), crossing the sample's overall skip rate
+of $0.533$ around $\mathrm{evaluation}\approx -0.5$ to $-1$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\columnwidth]{real_data_skip_rate_vs_evaluation.pdf}
+\caption{Study 3: binned skip rate (with 95\% CI) against \texttt{evaluation},
+restricted to its middle $90\%$ ($n=13461$).}
+\label{fig:study3-eval}
+\end{figure}
+
+$\mathrm{first\_occurrence\_position}$ (mean $6.71$, median $6$, range
+$1$--$19$) and $\mathrm{repeat\_gap}$ (mean $6.80$, median $6$, range
+$1$--$19$) are both right-skewed (Figure~\ref{fig:study3-hist}) --
+$\mathrm{repeat\_gap}$ additionally shows a pronounced even/odd alternation
+(gaps of $2$, $4$, $6$, $8$ are markedly more common than $3$, $5$, $7$,
+$9$), plausibly reflecting short, evenly-cycling stretches of repeated
+tracks within these sessions.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\columnwidth]{real_data_position_gap_histograms.pdf}
+\caption{Study 3: distributions of $\mathrm{first\_occurrence\_position}$
+(left) and $\mathrm{repeat\_gap}$ (right) across the $14957$ analyzed rows.}
+\label{fig:study3-hist}
+\end{figure}
+
+Neither quantity is a strong linear predictor of outcomes, but both carry
+more signal than the repeat's own raw $\mathrm{session\_position}$, which is
+essentially uncorrelated with either \texttt{real\_skip} ($r=0.008$) or
+\texttt{evaluation} ($r=0.007$) -- see Table~\ref{tab:study3-corr}.
+
+\begin{table*}[t]
+\centering
+\begin{tabular}{lcc}
+variable & corr.\ with \texttt{real\_skip} & corr.\ with \texttt{evaluation} \\
+\hline
+$\mathrm{session\_position}$ & $0.008$ & $0.007$ \\
+$\mathrm{first\_occurrence\_position}$ & $0.051$ & $0.047$ \\
+$\mathrm{repeat\_gap}$ & $-0.045$ & $-0.041$ \\
+\end{tabular}
+\caption{Study 3: Pearson correlation of each position/gap variable with
+\texttt{real\_skip} and \texttt{evaluation}.}
+\label{tab:study3-corr}
+\end{table*}
+
+That is, it is specifically \emph{where the first play fell} and \emph{how
+far apart} the two plays sit that carry a (small) relationship to outcomes
+-- not simply how late in the session the repeat itself occurs.
+
+The binned relationships (Figure~\ref{fig:study3-gap-position}) are
+non-monotonic, richer than these linear correlations alone suggest. Skip
+rate against $\mathrm{repeat\_gap}$ rises from about $0.53$ (gap $\approx 2$)
+to a local peak near $0.57$ (gap $\approx 4$--$8$, with a sharp dip to about
+$0.45$ at gap $\approx 7$), then declines steadily to about $0.44$ at the
+largest gaps ($\ge 16$ or so). Skip rate against
+$\mathrm{first\_occurrence\_position}$ rises from about $0.45$ (position
+$1$--$2$) to a plateau of about $0.55$--$0.59$ (positions $3$--$14$), then
+drops back to about $0.50$ at the latest positions ($\approx 17$).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{real_data_skip_rate_vs_gap_and_position.pdf}
+\caption{Study 3: binned skip rate (with 95\% CI) against $\mathrm{repeat\_gap}$
+(left) and $\mathrm{first\_occurrence\_position}$ (right).}
+\label{fig:study3-gap-position}
+\end{figure}
