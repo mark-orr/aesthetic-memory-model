@@ -1,0 +1,67 @@
+\begin{thebibliography}{9}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Aggarwal(2016)}]{aggarwal2016model}
+Aggarwal, C.~C. 2016.
+\newblock Model-based collaborative filtering.
+\newblock In \emph{Recommender systems: the textbook}, 71--138. Springer.
+
+\bibitem[{Anderson et~al.(2004)Anderson, Bothell, Byrne, Douglass, Lebiere, and
+  Qin}]{AndersonBothellByrneDouglassLebiereQin2004}
+Anderson, J.~R.; Bothell, D.; Byrne, M.~D.; Douglass, S.; Lebiere, C.; and Qin,
+  Y. 2004.
+\newblock An Integrated Theory of the Mind.
+\newblock \emph{Psychological Review}, 111(4): 1036–1060.
+
+\bibitem[{Anderson and Schooler(1991)}]{AndersonSchooler1991}
+Anderson, J.~R.; and Schooler, L.~J. 1991.
+\newblock Reflections of the Environment in Memory.
+\newblock \emph{Psychological Science}, 2(6): 396–408.
+
+\bibitem[{Berlyne(1974)}]{berlyne1974studies}
+Berlyne, D.~E. 1974.
+\newblock \emph{Studies in the new experimental aesthetics: Steps toward an
+  objective psychology of aesthetic appreciation.}
+\newblock Hemisphere.
+
+\bibitem[{Binz et~al.(2025)Binz, Akata, Bethge, Brändle, Callaway, Coda-Forno,
+  Dayan, Demircan, Eckstein, Éltető, Griffiths, Haridi, Jagadish, Ji-An,
+  Kipnis, Kumar, Ludwig, Mathony, Mattar, Modirshanechi, Nath, Peterson, Rmus,
+  Russek, Saanum, Schubert, Schulze~Buschoff, Singhi, Sui, Thalmann, Theis,
+  Truong, Udandarao, Voudouris, Wilson, Witte, Wu, Wulff, Xiong, and
+  Schulz}]{BinzEtal2025}
+Binz, M.; Akata, E.; Bethge, M.; Brändle, F.; Callaway, F.; Coda-Forno, J.;
+  Dayan, P.; Demircan, C.; Eckstein, M.~K.; Éltető, N.; Griffiths, T.~L.;
+  Haridi, S.; Jagadish, A.~K.; Ji-An, L.; Kipnis, A.; Kumar, S.; Ludwig, T.;
+  Mathony, M.; Mattar, M.; Modirshanechi, A.; Nath, S.~S.; Peterson, J.~C.;
+  Rmus, M.; Russek, E.~M.; Saanum, T.; Schubert, J.~A.; Schulze~Buschoff,
+  L.~M.; Singhi, N.; Sui, X.; Thalmann, M.; Theis, F.~J.; Truong, V.;
+  Udandarao, V.; Voudouris, K.; Wilson, R.; Witte, K.; Wu, S.; Wulff, D.~U.;
+  Xiong, H.; and Schulz, E. 2025.
+\newblock A foundation model to predict and capture human cognition.
+\newblock \emph{Nature}.
+
+\bibitem[{Chmiel and Schubert(2017)}]{chmiel2017back}
+Chmiel, A.; and Schubert, E. 2017.
+\newblock Back to the inverted-U for music preference: A review of the
+  literature.
+\newblock \emph{Psychology of Music}, 45(6): 886--909.
+
+\bibitem[{Dennett(2017)}]{dennett2017bacteria}
+Dennett, D.~C. 2017.
+\newblock \emph{From bacteria to Bach and back}.
+\newblock Allen Lane London.
+
+\bibitem[{Lex, Kowald, and Schedl(2020)}]{Lex2020BLL}
+Lex, E.; Kowald, D.; and Schedl, M. 2020.
+\newblock Modeling Popularity and Temporal Drift of Music Genre Preferences.
+\newblock \emph{Transactions of the International Society for Music Information
+  Retrieval}, 3: 17--30.
+
+\bibitem[{Rutledge-Taylor, Vellino, and West(2008)}]{4746700}
+Rutledge-Taylor, M.~F.; Vellino, A.; and West, R.~L. 2008.
+\newblock A holographic associative memory recommender system.
+\newblock In \emph{2008 Third International Conference on Digital Information
+  Management}, 87--92.
+
+\end{thebibliography}
